@@ -1,0 +1,51 @@
+\hypertarget{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a}{}\doxysection{GW\+::S\+Y\+S\+T\+EM\+::G\+Concurrent\+::E\+V\+E\+N\+T\+\_\+\+D\+A\+TA Struct Reference}
+\label{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a}\index{GW::SYSTEM::GConcurrent::EVENT\_DATA@{GW::SYSTEM::GConcurrent::EVENT\_DATA}}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+unsigned long long \mbox{\hyperlink{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_aa00307553cce13e83d3b3cf5a59d60ac}{task\+Submission\+Index}}
+\item 
+unsigned long long \mbox{\hyperlink{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_a2a5e3524db439d78bb90d1ec65aa6453}{microseconds\+Elapsed}}
+\item 
+unsigned int \mbox{\hyperlink{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_a9aecf23715c0d9f4af4cdc1d4b5a8405}{completion\+Range}} \mbox{[}2\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\mbox{\hyperlink{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a}{E\+V\+E\+N\+T\+\_\+\+D\+A\+TA}} provided by \mbox{\hyperlink{class_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent}{G\+Concurrent}}. 
+
+Definition at line 101 of file G\+Concurrent.\+h.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_aa00307553cce13e83d3b3cf5a59d60ac}\label{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_aa00307553cce13e83d3b3cf5a59d60ac}} 
+\index{GW::SYSTEM::GConcurrent::EVENT\_DATA@{GW::SYSTEM::GConcurrent::EVENT\_DATA}!taskSubmissionIndex@{taskSubmissionIndex}}
+\index{taskSubmissionIndex@{taskSubmissionIndex}!GW::SYSTEM::GConcurrent::EVENT\_DATA@{GW::SYSTEM::GConcurrent::EVENT\_DATA}}
+\doxysubsubsection{\texorpdfstring{taskSubmissionIndex}{taskSubmissionIndex}}
+{\footnotesize\ttfamily unsigned long long G\+W\+::\+S\+Y\+S\+T\+E\+M\+::\+G\+Concurrent\+::\+E\+V\+E\+N\+T\+\_\+\+D\+A\+T\+A\+::task\+Submission\+Index}
+
+Identifies a task based on increasing submission order. (A\+L\+W\+A\+YS V\+A\+L\+ID) 
+
+Definition at line 102 of file G\+Concurrent.\+h.
+
+\mbox{\Hypertarget{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_a2a5e3524db439d78bb90d1ec65aa6453}\label{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_a2a5e3524db439d78bb90d1ec65aa6453}} 
+\index{GW::SYSTEM::GConcurrent::EVENT\_DATA@{GW::SYSTEM::GConcurrent::EVENT\_DATA}!microsecondsElapsed@{microsecondsElapsed}}
+\index{microsecondsElapsed@{microsecondsElapsed}!GW::SYSTEM::GConcurrent::EVENT\_DATA@{GW::SYSTEM::GConcurrent::EVENT\_DATA}}
+\doxysubsubsection{\texorpdfstring{microsecondsElapsed}{microsecondsElapsed}}
+{\footnotesize\ttfamily unsigned long long G\+W\+::\+S\+Y\+S\+T\+E\+M\+::\+G\+Concurrent\+::\+E\+V\+E\+N\+T\+\_\+\+D\+A\+T\+A\+::microseconds\+Elapsed}
+
+How long it took for the reported T\+A\+SK to complete (queue time inclusive). N\+O\+TE\+: \mbox{\hyperlink{class_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_a9402fcf08b745b49b7ac315749b49410aaf8823b98f8294fe38dc0269f1739e02}{Events\+::\+P\+A\+R\+A\+L\+L\+E\+L\+\_\+\+S\+E\+C\+T\+I\+O\+N\+\_\+\+C\+O\+M\+P\+L\+E\+TE}} does N\+OT factor in queue wait times. 
+
+Definition at line 103 of file G\+Concurrent.\+h.
+
+\mbox{\Hypertarget{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_a9aecf23715c0d9f4af4cdc1d4b5a8405}\label{struct_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_1_1_e_v_e_n_t___d_a_t_a_a9aecf23715c0d9f4af4cdc1d4b5a8405}} 
+\index{GW::SYSTEM::GConcurrent::EVENT\_DATA@{GW::SYSTEM::GConcurrent::EVENT\_DATA}!completionRange@{completionRange}}
+\index{completionRange@{completionRange}!GW::SYSTEM::GConcurrent::EVENT\_DATA@{GW::SYSTEM::GConcurrent::EVENT\_DATA}}
+\doxysubsubsection{\texorpdfstring{completionRange}{completionRange}}
+{\footnotesize\ttfamily unsigned int G\+W\+::\+S\+Y\+S\+T\+E\+M\+::\+G\+Concurrent\+::\+E\+V\+E\+N\+T\+\_\+\+D\+A\+T\+A\+::completion\+Range\mbox{[}2\mbox{]}}
+
+Reports what section of a parallel operation was completed \mbox{[}start,end\mbox{]}. N\+O\+TE\+: For \mbox{\hyperlink{class_g_w_1_1_s_y_s_t_e_m_1_1_g_concurrent_a9402fcf08b745b49b7ac315749b49410a74124942fd510cf90e28272d350c6edf}{Events\+::\+S\+I\+N\+G\+U\+L\+A\+R\+\_\+\+T\+A\+S\+K\+\_\+\+C\+O\+M\+P\+L\+E\+TE}}, this is always 0-\/1. 
+
+Definition at line 104 of file G\+Concurrent.\+h.
+

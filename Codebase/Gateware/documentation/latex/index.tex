@@ -1,0 +1,153 @@
+\label{index_md_D}%
+\Hypertarget{index_md_D}%
+\+:\+\_\+\+Gateware\+\_\+\+Related\+\_\+gateware\+\_\+\+R\+E\+A\+D\+ME 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{******************* GETTING STARTED ********************}
+\DoxyCodeLine{ALL PLATFORMS:}
+\DoxyCodeLine{}
+\DoxyCodeLine{Just copy paste Gateware.h and LICENSE.md into your C++11 64bit console project.}
+\DoxyCodeLine{(if you don't see Gateware.h this means you downloaded the main repo used }
+\DoxyCodeLine{for development. Instead go back to "Releases" on our GitLab page and download)}
+\DoxyCodeLine{}
+\DoxyCodeLine{in your source file:}
+\DoxyCodeLine{    \#define GATEWARE\_ENABLE\_CORE}
+\DoxyCodeLine{    \#include "Gateware.h" }
+\DoxyCodeLine{}
+\DoxyCodeLine{This should compile on any standard C++11 compiler.}
+\DoxyCodeLine{Gateware is designed to be Modular so by default it is quite basic.}
+\DoxyCodeLine{}
+\DoxyCodeLine{Next Step is to open the included Docs(index.html) and see what is available. }
+\DoxyCodeLine{Once you spot a library you want to use just \#define it's namespace:}
+\DoxyCodeLine{}
+\DoxyCodeLine{\#define GATEWARE\_ENABLE\_CORE // This is called white-\/lisitng}
+\DoxyCodeLine{\#define GATEWARE\_ENABLE\_SYSTEM // Enables valid implementations}
+\DoxyCodeLine{\#include "Gateware.h" }
+\DoxyCodeLine{}
+\DoxyCodeLine{Note: Most Classes will still compile, even without the \#define but will not be functional. }
+\DoxyCodeLine{Many more complex libs rely on SYSTEM so that is a good one to have typically enabled.}
+\DoxyCodeLine{}
+\DoxyCodeLine{You can also disable specific libraries in a group:}
+\DoxyCodeLine{\#define GATEWARE\_ENABLE\_CORE}
+\DoxyCodeLine{\#define GATEWARE\_ENABLE\_SYSTEM}
+\DoxyCodeLine{\#define GATEWARE\_DISABLE\_GWINDOW // This is called black-\/listing}
+\DoxyCodeLine{\#include "Gateware.h" }
+\DoxyCodeLine{}
+\DoxyCodeLine{Use them to shorten compile times and reduce binary size.}
+\DoxyCodeLine{}
+\DoxyCodeLine{Library Basics:}
+\DoxyCodeLine{}
+\DoxyCodeLine{All Gateware objects are considered "Proxies". }
+\DoxyCodeLine{Proxies are basically smart pointers that have strong \& weak binding. }
+\DoxyCodeLine{}
+\DoxyCodeLine{// To make a valid library interface, declare and "Create(...)"}
+\DoxyCodeLine{GW::SYSTEM::GWindow myWin;}
+\DoxyCodeLine{if (+myWin.Create(0, 0, 500, 500, GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED))}
+\DoxyCodeLine{    std::cout << "Gateware window was created" << std::endl;}
+\DoxyCodeLine{}
+\DoxyCodeLine{ALL Gateware routines return a GW:GReturn error/success code.}
+\DoxyCodeLine{The '+' above is a shortcut to see if the return was a good one.}
+\DoxyCodeLine{}
+\DoxyCodeLine{When you copy proxies they are considered to have "weak" binding.}
+\DoxyCodeLine{This means they will only be valid for the lifetime of the right hand proxy you copied from. }
+\DoxyCodeLine{When you move proxies they are considered to have "strong" binding.}
+\DoxyCodeLine{This means they stay valid for the lifetime of the object. }
+\DoxyCodeLine{You can check the validity of a Proxy using simple boolean logic. (ex: if (Proxy)\{\} )}
+\DoxyCodeLine{}
+\DoxyCodeLine{Tips:}
+\DoxyCodeLine{}
+\DoxyCodeLine{All Created proxies can "Share()", "Mirror()" and "Relinquish()".}
+\DoxyCodeLine{You can use these operations to more carefully control a proxies lifetime.}
+\DoxyCodeLine{}
+\DoxyCodeLine{To "delete" a proxy just let it fall out of scope or "MyGProxy = nullptr;" }
+\DoxyCodeLine{}
+\DoxyCodeLine{Gateware arguments are heavily templated behind the scenes. }
+\DoxyCodeLine{If you want "intellisense" to see what they are use the "-\/-\/-\/>" operator on a Proxy. }
+\DoxyCodeLine{Just be sure to remove it after, they are not meant for actual use and call abort()}
+\DoxyCodeLine{}
+\DoxyCodeLine{If you heavily use Gateware.h in multiple places consider placing it in a pre-\/compiled header to reduce compile times.}
+\DoxyCodeLine{}
+\DoxyCodeLine{"GW::I" is an internal namespace, ignore it unless you want to become a Gateware developer/contributor. }
+\DoxyCodeLine{}
+\DoxyCodeLine{Some libraries outside the Core have a couple manual dependencies depending on platform. }
+\DoxyCodeLine{See the below section to resolve them. }
+\DoxyCodeLine{}
+\DoxyCodeLine{*********** PER PLATFORM SETUP INSTRUCTIONS ************}
+\DoxyCodeLine{}
+\DoxyCodeLine{WIN:}
+\DoxyCodeLine{}
+\DoxyCodeLine{How to setup your dev machine on Windows 10:}
+\DoxyCodeLine{}
+\DoxyCodeLine{All first party libraries are auto-\/linked so not much to do here.}
+\DoxyCodeLine{}
+\DoxyCodeLine{Requires Visual Studio and the Windows 10 SDK}
+\DoxyCodeLine{}
+\DoxyCodeLine{if you want to use Vulkan:}
+\DoxyCodeLine{    Go Here: https://vulkan.lunarg.com/sdk/home}
+\DoxyCodeLine{    Install the latest SDK}
+\DoxyCodeLine{    Link the SDK /Include/Vulkan \& /Lib folders to your project.}
+\DoxyCodeLine{else}
+\DoxyCodeLine{    \#define GATEWARE\_DISABLE\_GVULKANSURFACE // above include}
+\DoxyCodeLine{}
+\DoxyCodeLine{MAC:}
+\DoxyCodeLine{}
+\DoxyCodeLine{How to setup your dev machine on MacOS (High Sierra/Mojave/Catalina):}
+\DoxyCodeLine{}
+\DoxyCodeLine{You need XCode if you don't already have it.}
+\DoxyCodeLine{}
+\DoxyCodeLine{Most first party frameworks are auto-\/imported as needed.}
+\DoxyCodeLine{But to make that work you must: (in your project)}
+\DoxyCodeLine{    change the extensions of any source files that include }
+\DoxyCodeLine{}
+\DoxyCodeLine{    Gateware.h to support Objective-\/C++ (.cpp/.m -\/> .mm) }
+\DoxyCodeLine{}
+\DoxyCodeLine{}
+\DoxyCodeLine{XCode Project Settings: (Build Settings)     }
+\DoxyCodeLine{    }
+\DoxyCodeLine{}
+\DoxyCodeLine{Apple Clang -\/ Custom Compiler Flags: Other C++ Flags}
+\DoxyCodeLine{        }
+\DoxyCodeLine{    -\/fmodules -\/fcxx-\/modules}
+\DoxyCodeLine{    }
+\DoxyCodeLine{Apple Clang -\/ Warnings -\/ All languages}
+\DoxyCodeLine{    }
+\DoxyCodeLine{    Mismatched Return Type = No}
+\DoxyCodeLine{}
+\DoxyCodeLine{if you want to use Vulkan:}
+\DoxyCodeLine{    Go Here: https://vulkan.lunarg.com/sdk/home}
+\DoxyCodeLine{    Download the latest SDK}
+\DoxyCodeLine{    Extract the archive}
+\DoxyCodeLine{    Navigate the terminal to the extracted folder and:}
+\DoxyCodeLine{    ./install\_vulkan.py}
+\DoxyCodeLine{    Link Vulkan to your project.}
+\DoxyCodeLine{else}
+\DoxyCodeLine{    \#define GATEWARE\_DISABLE\_GVULKANSURFACE // above include}
+\DoxyCodeLine{}
+\DoxyCodeLine{}
+\DoxyCodeLine{LINUX:}
+\DoxyCodeLine{}
+\DoxyCodeLine{How to setup your dev machine on Linux: (Mint/Ubuntu/Debian)}
+\DoxyCodeLine{}
+\DoxyCodeLine{We build \& test using GCC + Codelite on Linux but other compilers \& IDEs will probably be fine.}
+\DoxyCodeLine{}
+\DoxyCodeLine{Terminal time:}
+\DoxyCodeLine{}
+\DoxyCodeLine{sudo apt-\/get install cmake codelite libx11-\/dev mesa-\/common-\/dev libgl1-\/mesa-\/dev libglu1-\/mesa-\/dev libpulse-\/dev}
+\DoxyCodeLine{}
+\DoxyCodeLine{In your project you need: (depending on library)}
+\DoxyCodeLine{    -\/std=c++11 -\/pthread -\/lX11 -\/lGL -\/lpulse}
+\DoxyCodeLine{}
+\DoxyCodeLine{if you want to use Vulkan:}
+\DoxyCodeLine{    Go Here: https://vulkan.lunarg.com/sdk/home}
+\DoxyCodeLine{    Click on the Ubuntu Packages Tab under Linux.}
+\DoxyCodeLine{    Click "Latest Supported Release"}
+\DoxyCodeLine{    Click on the link that is compatible with your Debian Distro (Typically the top one).}
+\DoxyCodeLine{    Copy the text inside the text box underneath the link.}
+\DoxyCodeLine{    Paste it into your terminal and run.}
+\DoxyCodeLine{    Link Vulkan to your project.}
+\DoxyCodeLine{else}
+\DoxyCodeLine{    \#define GATEWARE\_DISABLE\_GVULKANSURFACE // above include}
+\DoxyCodeLine{}
+\DoxyCodeLine{optional: (if you would rather use Clang)}
+\DoxyCodeLine{sudo apt-\/get install llvm clang }
+\end{DoxyCode}
+ 
