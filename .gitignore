@@ -1,35 +1,7 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
 #Generated files
 Codebase/build/.vs/
 Codebase/build/x64/
 Codebase/build/LevelRenderer.dir/
 Codebase/build/CMakeFiles/
-Codebase/build/CMakeCache.txt
 Codebase/build/Debug/
+Codebase/build/CMakeCache.txt
