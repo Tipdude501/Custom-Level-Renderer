@@ -25,3 +25,11 @@
 *.la
 *.a
 *.lib
+
+#Generated files
+Codebase/build/.vs/
+Codebase/build/x64/
+Codebase/build/LevelRenderer.dir/
+Codebase/build/CMakeFiles/
+Codebase/build/CMakeCache.txt
+Codebase/build/Debug/
