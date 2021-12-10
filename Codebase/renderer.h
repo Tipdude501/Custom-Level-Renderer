@@ -18,6 +18,7 @@ const char* vertexShaderSource = vertexShaderPath.c_str();
 std::string pixelShaderPath = ShaderAsString("../PixelShader.hlsl");
 const char* pixelShaderSource = pixelShaderPath.c_str();
 
+
 // Creation, Rendering & Cleanup
 class Renderer
 {
@@ -26,15 +27,12 @@ class Renderer
 	GW::GRAPHICS::GVulkanSurface vlk;
 	GW::CORE::GEventReceiver shutdown;
 
-	// TODO: Part 4a
 	GW::INPUT::GInput inputProxy;
 	GW::INPUT::GController controllerProxy;
 	float timeScale = 60;						//updates per second
 	float cameraSpeed = 0.18f;
 
-	// TODO: Part 2a
 	GW::MATH::GMATRIXF floorWorld;
-	// TODO: Part 3d
 	GW::MATH::GMATRIXF ceilingWorld;
 	GW::MATH::GMATRIXF wallWorld1;
 	GW::MATH::GMATRIXF wallWorld2;
@@ -44,11 +42,9 @@ class Renderer
 	GW::MATH::GMatrix matrixProxy;
 	GW::MATH::GVector vectorProxy;
 
-	// TODO: Part 2e
 	GW::MATH::GMATRIXF camera;
 	GW::MATH::GMATRIXF view;
 
-	// TODO: Part 3a
 	GW::MATH::GMATRIXF projection;
 
 	// what we need at a minimum to draw a triangle
@@ -61,7 +57,6 @@ class Renderer
 	VkPipeline pipeline = nullptr;
 	VkPipelineLayout pipelineLayout = nullptr;
 public:
-	// TODO: Part 1c
 	struct Vertex {
 		float position[4];
 		float color[4];
@@ -80,13 +75,11 @@ public:
 		}
 	};
 
-	// TODO: Part 2b
 	struct ShaderVars {
 		GW::MATH::GMATRIXF world;
 		GW::MATH::GMATRIXF viewProjection;
 	};
 
-	// TODO: Part 2f
 	Renderer(GW::SYSTEM::GWindow _win, GW::GRAPHICS::GVulkanSurface _vlk)
 	{
 		win = _win;
@@ -95,11 +88,9 @@ public:
 		win.GetClientWidth(width);
 		win.GetClientHeight(height);
 
-		// TODO: Part 4a
 		inputProxy.Create(win);
 		controllerProxy.Create();
 
-		// TODO: Part 2a
 		matrixProxy.Create();
 		vectorProxy.Create();
 
@@ -115,7 +106,6 @@ public:
 		matrixProxy.RotateXGlobalF(floorWorld, 90.0f * TO_RADIANS, floorWorld);
 		floorWorld.row4 = { 0, -0.5f, 0, 1 };
 
-		// TODO: Part 3d
 		matrixProxy.RotateXGlobalF(ceilingWorld, 90.0f * TO_RADIANS, ceilingWorld);
 		ceilingWorld.row4 = { 0, 0.5f, 0, 1 };
 
@@ -129,7 +119,6 @@ public:
 		wallWorld4.row4 = { 0, 0, 0.5f, 1 };
 
 
-		// TODO: Part 2e
 		GW::MATH::GVECTORF eye = { 0.5f, .2f, -0.5f };
 		GW::MATH::GVECTORF at = { 0.0f, 0.0f, 0.0f };
 		GW::MATH::GVECTORF up = { 0.0f, 1.0f, 0.0f };
@@ -141,9 +130,7 @@ public:
 		vlk.GetDevice((void**)&device);
 		vlk.GetPhysicalDevice((void**)&physicalDevice);
 
-		// TODO: Part 1b
-		// TODO: Part 1c
-		// TODO: Part 1d
+
 		// Create Vertex Buffer
 		float size = 25.0f;
 		std::vector<Vertex> tempVerts;
@@ -176,7 +163,6 @@ public:
 		shaderc_compiler_t compiler = shaderc_compiler_initialize();
 		shaderc_compile_options_t options = shaderc_compile_options_initialize();
 		shaderc_compile_options_set_source_language(options, shaderc_source_language_hlsl);
-		// TODO: Part 3C
 		shaderc_compile_options_set_invert_y(options, false);
 #ifndef NDEBUG
 		shaderc_compile_options_set_generate_debug_info(options);
@@ -224,12 +210,10 @@ public:
 		assembly_create_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 		assembly_create_info.primitiveRestartEnable = false;
 		// Vertex Input State
-		// TODO: Part 1c
 		VkVertexInputBindingDescription vertex_binding_description = {};
 		vertex_binding_description.binding = 0;
 		vertex_binding_description.stride = sizeof(Vertex);
 		vertex_binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-		// TODO: Part 1c
 		VkVertexInputAttributeDescription vertex_attribute_description[2] = {
 			{ 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, position) },	//position
 			{ 1, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, color) }		//color
@@ -313,7 +297,6 @@ public:
 		dynamic_create_info.dynamicStateCount = 2;
 		dynamic_create_info.pDynamicStates = dynamic_state;
 
-		// TODO: Part 2c
 		VkPushConstantRange push_constant;
 		push_constant.offset = 0;
 		push_constant.size = sizeof(ShaderVars);
@@ -324,8 +307,8 @@ public:
 		pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipeline_layout_create_info.setLayoutCount = 0;
 		pipeline_layout_create_info.pSetLayouts = VK_NULL_HANDLE;
-		pipeline_layout_create_info.pushConstantRangeCount = 1; // TODO: Part 2d 
-		pipeline_layout_create_info.pPushConstantRanges = &push_constant; // TODO: Part 2d
+		pipeline_layout_create_info.pushConstantRangeCount = 1; 
+		pipeline_layout_create_info.pPushConstantRanges = &push_constant;
 		vkCreatePipelineLayout(device, &pipeline_layout_create_info,
 			nullptr, &pipelineLayout);
 		// Pipeline State... (FINALLY) 
@@ -376,26 +359,20 @@ public:
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-		// TODO: Part 3a
 		float aspect;
 		vlk.GetAspectRatio(aspect);
 		matrixProxy.ProjectionVulkanLHF(65.0f * TO_RADIANS, aspect, 0.1f, 100.0f, projection);
 
-		// TODO: Part 3b
-		// TODO: Part 2b
-		// TODO: Part 2f, Part 3b
 		ShaderVars sv;
 		sv.world = floorWorld;
 		matrixProxy.MultiplyMatrixF(view, projection, sv.viewProjection);
 
-		// TODO: Part 2d
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
 		// now we can draw
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
-		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0); // TODO: Part 1b // TODO: Part 1c
+		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
 
-		// TODO: Part 3e
 		sv.world = ceilingWorld;
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
@@ -421,7 +398,7 @@ public:
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
 		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
 	}
-	// TODO: Part 4b
+
 	void UpdateCamera()
 	{
 		//Timer
@@ -431,11 +408,7 @@ public:
 			prevTime += std::chrono::system_clock::now() - prevTime;
 		}
 
-		// TODO: Part 4c
 		matrixProxy.InverseF(view, camera);
-
-		// TODO: Part 4d
-		// TODO: Part 4e
 		GW::MATH::GVECTORF displacement;
 		float spacebar = 0;
 		float lshift = 0;
@@ -467,8 +440,6 @@ public:
 		displacement = { 0, (spacebar - lshift + rtrigger - ltrigger) * deltaTime.count() * cameraSpeed, 0 };
 		vectorProxy.AddVectorF(camera.row4, displacement, camera.row4);
 
-		// TODO: Part 4f
-		// TODO: Part 4g
 		float mouseX = 0;
 		float mouseY = 0;
 		float rsticky = 0;
@@ -493,7 +464,6 @@ public:
 			matrixProxy.RotateYGlobalF(camera, yaw, camera);
 		}
 		
-		// TODO: Part 4c
 		matrixProxy.InverseF(camera, view);
 	}
 private:
