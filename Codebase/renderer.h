@@ -29,8 +29,9 @@ class Renderer
 
 	GW::INPUT::GInput inputProxy;
 	GW::INPUT::GController controllerProxy;
-	float timeScale = 60;						//updates per second
-	float cameraSpeed = 0.18f;
+	float updatesPerSecond = 60;
+	float cameraMoveSpeed = 0.18f;
+	float lookSensitivity = 4.0f;
 
 	GW::MATH::GMATRIXF floorWorld;
 	GW::MATH::GMATRIXF ceilingWorld;
@@ -404,7 +405,7 @@ public:
 		//Timer
 		static std::chrono::system_clock::time_point prevTime = std::chrono::system_clock::now();
 		std::chrono::duration<float> deltaTime = std::chrono::system_clock::now() - prevTime;
-		if (deltaTime.count() >= 1.0f / timeScale) {
+		if (deltaTime.count() >= 1.0f / updatesPerSecond) {
 			prevTime += std::chrono::system_clock::now() - prevTime;
 		}
 
@@ -432,12 +433,12 @@ public:
 		inputProxy.GetState(G_LX_AXIS, lstickx);
 
 		displacement = { 
-			(d - a + lstickx)* deltaTime.count()* cameraSpeed,
+			(d - a + lstickx)* deltaTime.count()* cameraMoveSpeed,
 			0,
-			(w - s + lsticky) * deltaTime.count() * cameraSpeed };
+			(w - s + lsticky) * deltaTime.count() * cameraMoveSpeed };
 		matrixProxy.TranslateLocalF(camera, displacement, camera);
 
-		displacement = { 0, (spacebar - lshift + rtrigger - ltrigger) * deltaTime.count() * cameraSpeed, 0 };
+		displacement = { 0, (spacebar - lshift + rtrigger - ltrigger) * deltaTime.count() * cameraMoveSpeed, 0 };
 		vectorProxy.AddVectorF(camera.row4, displacement, camera.row4);
 
 		float mouseX = 0;
@@ -455,12 +456,12 @@ public:
 		if (G_PASS(result) && result != GW::GReturn::REDUNDANT) 
 		{
 			float thumbSpeed = PI * deltaTime.count();
-			float pitch = (60.0f * TO_RADIANS * mouseY) / (screenHeight + rsticky * (-thumbSpeed));
+			float pitch = (60.0f * TO_RADIANS * mouseY * lookSensitivity) / (screenHeight + rsticky * (-thumbSpeed));
 			GW::MATH::GMATRIXF rotation;
 			matrixProxy.RotationYawPitchRollF(0, pitch, 0, rotation);
 			matrixProxy.MultiplyMatrixF(rotation, camera, camera);
 			
-			float yaw = 60.0f * TO_RADIANS * mouseX / screenWidth + rstickx * thumbSpeed;
+			float yaw = 60.0f * TO_RADIANS * mouseX * lookSensitivity / screenWidth + rstickx * thumbSpeed;
 			matrixProxy.RotateYGlobalF(camera, yaw, camera);
 		}
 		
