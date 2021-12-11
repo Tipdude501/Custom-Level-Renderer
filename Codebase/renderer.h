@@ -33,7 +33,7 @@ class Renderer
 
 	// LevelData
 	LevelData lvlData;
-	std::string levelFilePath = "../../Assets/Levels/GameLevel.txt";
+	std::string levelFilePath = "../../Assets/GameLevel.txt";
 
 	// User Input
 	GW::INPUT::GInput inputProxy;
@@ -98,7 +98,11 @@ public:
 		std::vector<GW::MATH::GMATRIXF> matrices;
 		if(!GetGameLevelData(filenames, matrices))
 			std::cout << "Level Loading Error: \"" << levelFilePath << "\" did not open properly.";
-		
+		for (size_t i = 0; i < filenames.size(); i++)
+		{
+			lvlData.AddInstance(filenames[i], matrices[i]);
+		}
+
 		win = _win;
 		vlk = _vlk;
 		unsigned int width, height;

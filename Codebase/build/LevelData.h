@@ -6,7 +6,7 @@ class LevelData
 {
 public:
 	struct UniqueMesh {
-		const char* name;
+		std::string name;
 		unsigned int indexCount;
 		unsigned int instanceCount = 1;
 		unsigned int firstIndex;
@@ -22,18 +22,18 @@ public:
 	std::vector<H2B::MATERIAL> materials;
 
 	// Returns a pointer to a unique mesh if it exists
-	UniqueMesh* GetMesh(const char* _meshName)
+	UniqueMesh* GetMesh(std::string _meshName)
 	{
 		for (unsigned int i = 0; i < uniqueMeshes.size(); i++)
 		{
-			if (std::strcmp(uniqueMeshes[i].name, _meshName) == 0)
+			if (uniqueMeshes[i].name.compare(_meshName) == 0)
 				return &uniqueMeshes[i];
 		}
 		return nullptr;
 	}
 
 	// Add an instance of a unique mesh OR create a new unique mesh if does not exist
-	void AddInstance(const char* _meshName, GW::MATH::GMATRIXF _matrix)
+	void AddInstance(std::string _meshName, GW::MATH::GMATRIXF _matrix)
 	{
 		UniqueMesh* instance = GetMesh(_meshName);
 		if (instance)
