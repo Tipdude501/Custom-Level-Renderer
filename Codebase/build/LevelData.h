@@ -22,7 +22,7 @@ public:
 	std::vector<H2B::MATERIAL> materials;
 
 	// Returns a pointer to a unique mesh if it exists
-	UniqueMesh* GetMesh(std::string _meshName)
+	UniqueMesh* GetMesh(const std::string& _meshName)
 	{
 		for (unsigned int i = 0; i < uniqueMeshes.size(); i++)
 		{
