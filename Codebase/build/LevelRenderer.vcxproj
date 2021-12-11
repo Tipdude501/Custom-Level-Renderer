@@ -315,6 +315,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemGroup>
     <ClCompile Include="C:\Users\reill\School\Custom-Level-Renderer\Codebase\main.cpp" />
     <ClInclude Include="C:\Users\reill\School\Custom-Level-Renderer\Codebase\renderer.h" />
+    <ClInclude Include="h2bParser.h" />
+    <ClInclude Include="LevelData.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="C:\Users\reill\School\Custom-Level-Renderer\Codebase\build\ZERO_CHECK.vcxproj">

@@ -1,16 +1,20 @@
-// minimalistic code to draw a single triangle, this is not part of the API.
 #include "shaderc/shaderc.h" // needed for compiling shaders at runtime
 #ifdef _WIN32 // must use MT platform DLL libraries on windows
 	#pragma comment(lib, "shaderc_combined.lib") 
 #endif
-
 #include <chrono>
+#include <iostream>
+#include <string>
+#include <fstream>
+#include "build/LevelData.h"
+#include "build/h2bParser.h"
 
 #define PI 3.14159265359f
 #define TO_RADIANS PI / 180.0f
 
-//Forward declaration
+//Forward declarations
 std::string ShaderAsString(const char* shaderFilePath);
+
 // Simple Vertex Shader
 std::string vertexShaderPath = ShaderAsString("../VertexShader.hlsl");
 const char* vertexShaderSource = vertexShaderPath.c_str();
@@ -22,41 +26,46 @@ const char* pixelShaderSource = pixelShaderPath.c_str();
 // Creation, Rendering & Cleanup
 class Renderer
 {
-	// proxy handles
+	// Proxy handles
 	GW::SYSTEM::GWindow win;
 	GW::GRAPHICS::GVulkanSurface vlk;
 	GW::CORE::GEventReceiver shutdown;
 
+	// LevelData
+	LevelData lvlData;
+	std::string levelFilePath = "../../Assets/Levels/GameLevel.txt";
+
+	// User Input
 	GW::INPUT::GInput inputProxy;
 	GW::INPUT::GController controllerProxy;
 	float updatesPerSecond = 60;
 	float cameraMoveSpeed = 0.18f;
 	float lookSensitivity = 4.0f;
 
+	// Matrices
+	GW::MATH::GMatrix matrixProxy;
+	GW::MATH::GVector vectorProxy;
 	GW::MATH::GMATRIXF floorWorld;
 	GW::MATH::GMATRIXF ceilingWorld;
 	GW::MATH::GMATRIXF wallWorld1;
 	GW::MATH::GMATRIXF wallWorld2;
 	GW::MATH::GMATRIXF wallWorld3;
 	GW::MATH::GMATRIXF wallWorld4;
-
-	GW::MATH::GMatrix matrixProxy;
-	GW::MATH::GVector vectorProxy;
-
 	GW::MATH::GMATRIXF camera;
 	GW::MATH::GMATRIXF view;
-
 	GW::MATH::GMATRIXF projection;
 
-	// what we need at a minimum to draw a triangle
+	// Vulkan objects
 	VkDevice device = nullptr;
 	VkBuffer vertexHandle = nullptr;
+	VkBuffer indexHandle = nullptr;
 	VkDeviceMemory vertexData = nullptr;
+	VkDeviceMemory indexData = nullptr;
 	VkShaderModule vertexShader = nullptr;
 	VkShaderModule pixelShader = nullptr;
-	// pipeline settings for drawing (also required)
 	VkPipeline pipeline = nullptr;
 	VkPipelineLayout pipelineLayout = nullptr;
+
 public:
 	struct Vertex {
 		float position[4];
@@ -81,8 +90,15 @@ public:
 		GW::MATH::GMATRIXF viewProjection;
 	};
 
+
 	Renderer(GW::SYSTEM::GWindow _win, GW::GRAPHICS::GVulkanSurface _vlk)
 	{
+		// Load level data
+		std::vector <std::string> filenames;
+		std::vector<GW::MATH::GMATRIXF> matrices;
+		if(!GetGameLevelData(filenames, matrices))
+			std::cout << "Level Loading Error: \"" << levelFilePath << "\" did not open properly.";
+		
 		win = _win;
 		vlk = _vlk;
 		unsigned int width, height;
@@ -400,15 +416,17 @@ public:
 		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
 	}
 
+	// Call before Render. Updates the view matrix based on user input.
 	void UpdateCamera()
 	{
-		//Timer
+		// Timer
 		static std::chrono::system_clock::time_point prevTime = std::chrono::system_clock::now();
 		std::chrono::duration<float> deltaTime = std::chrono::system_clock::now() - prevTime;
 		if (deltaTime.count() >= 1.0f / updatesPerSecond) {
 			prevTime += std::chrono::system_clock::now() - prevTime;
 		}
 
+		// Move camera
 		matrixProxy.InverseF(view, camera);
 		GW::MATH::GVECTORF displacement;
 		float spacebar = 0;
@@ -441,6 +459,7 @@ public:
 		displacement = { 0, (spacebar - lshift + rtrigger - ltrigger) * deltaTime.count() * cameraMoveSpeed, 0 };
 		vectorProxy.AddVectorF(camera.row4, displacement, camera.row4);
 
+		// Rotate camera
 		float mouseX = 0;
 		float mouseY = 0;
 		float rsticky = 0;
@@ -465,8 +484,87 @@ public:
 			matrixProxy.RotateYGlobalF(camera, yaw, camera);
 		}
 		
+		// Apply to view matrix
 		matrixProxy.InverseF(camera, view);
 	}
+
+	// Loads model + transform level data from gameLevelFile
+	bool GetGameLevelData(std::vector<std::string>& _filenames, std::vector<GW::MATH::GMATRIXF>& _matrices) 
+	{
+		std::string line;
+		std::ifstream file(levelFilePath, std::ios::in);
+		
+		// Failed to open
+		if (!file.is_open())
+			return false;
+		
+		// Read file
+		while (std::getline(file, line)) {
+			if (line.compare("MESH") == 0) {
+				// Get name
+				std::getline(file, line);
+				//trim off extra characters
+				auto index = line.find(".");
+				if (index != std::string::npos)
+					line = line.substr(0, index);
+				//push back name
+				_filenames.push_back(line);
+
+				// Get matrix
+				GW::MATH::GMATRIXF m;
+				std::string row1, row2, row3, row4;
+				std::getline(file, row1);
+				std::getline(file, row2);
+				std::getline(file, row3);
+				std::getline(file, row4);
+				//row1
+				std::string sub = row1.substr(row1.find("(") + 1, row1.length() - 1);
+				m.row1.data[0] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row1.data[1] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row1.data[2] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row1.data[3] = std::atof(sub.c_str());
+				//row2
+				sub = row2.substr(row2.find("(") + 1, row2.length() - 1);
+				m.row2.data[0] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row2.data[1] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row2.data[2] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row2.data[3] = std::atof(sub.c_str());
+				//row3
+				sub = row3.substr(row3.find("(") + 1, row3.length() - 1);
+				m.row3.data[0] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row3.data[1] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row3.data[2] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row3.data[3] = std::atof(sub.c_str());
+				//row4
+				sub = row4.substr(row4.find("(") + 1, row4.length() - 1);
+				m.row4.data[0] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row4.data[1] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row4.data[2] = std::atof(sub.c_str());
+				sub = sub.substr(sub.find(",") + 1, sub.length() - 1);
+				m.row4.data[3] = std::atof(sub.c_str());
+				//push back matrix
+				_matrices.push_back(m);
+			}
+		}
+		file.close();
+		_filenames.shrink_to_fit();
+		_matrices.shrink_to_fit();
+
+		// File read successfully
+		return true;
+	}
+
 private:
 	void CleanUp()
 	{

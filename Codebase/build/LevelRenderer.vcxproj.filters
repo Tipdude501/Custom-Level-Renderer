@@ -9,6 +9,10 @@
     <ClInclude Include="C:\Users\reill\School\Custom-Level-Renderer\Codebase\renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LevelData.h" />
+    <ClInclude Include="h2bParser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="C:\Users\reill\School\Custom-Level-Renderer\Codebase\CMakeLists.txt" />
