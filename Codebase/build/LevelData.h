@@ -10,6 +10,7 @@ public:
 		unsigned int indexCount;
 		unsigned int instanceCount = 1;
 		unsigned int firstIndex;
+		unsigned int vertexOffset;
 		unsigned int materialIndex;
 		std::vector<GW::MATH::GMATRIXF> matrices;
 	};

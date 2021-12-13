@@ -32,7 +32,7 @@ class Renderer
 
 	// Level data
 	LevelData lvlData;
-	std::string levelFilePath = "../../Assets/Levels/TestLevel.txt";
+	std::string levelFilePath = "../../Assets/Levels/GameLevel.txt";
 	
 	// Model data
 	H2B::Parser parser;
@@ -101,24 +101,6 @@ public:
 		matrixProxy.Create();
 		vectorProxy.Create();
 
-		// Init box grid matrices
-		/*matrixProxy.IdentityF(floorWorld);
-		matrixProxy.IdentityF(ceilingWorld);
-		matrixProxy.IdentityF(wallWorld1);
-		matrixProxy.IdentityF(wallWorld2);
-		matrixProxy.IdentityF(wallWorld3);
-		matrixProxy.IdentityF(wallWorld4);
-		matrixProxy.RotateXGlobalF(floorWorld, 90.0f * TO_RADIANS, floorWorld);
-		floorWorld.row4 = { 0, -0.5f, 0, 1 };
-		matrixProxy.RotateXGlobalF(ceilingWorld, 90.0f * TO_RADIANS, ceilingWorld);
-		ceilingWorld.row4 = { 0, 0.5f, 0, 1 };
-		matrixProxy.RotateYGlobalF(wallWorld1, 90.0f * TO_RADIANS, wallWorld1);
-		wallWorld1.row4 = { -0.5f, 0, 0, 1 };
-		matrixProxy.RotateYGlobalF(wallWorld2, 90.0f * TO_RADIANS, wallWorld2);
-		wallWorld2.row4 = { 0.5f, 0, 0, 1 };
-		wallWorld3.row4 = { 0, 0, -0.5f, 1 };
-		wallWorld4.row4 = { 0, 0, 0.5f, 1 };*/
-
 		// Init camera and view
 		GW::MATH::GVECTORF eye = { 0.5f, .2f, -0.5f };
 		GW::MATH::GVECTORF at = { 0.0f, 0.0f, 0.0f };
@@ -157,6 +139,7 @@ public:
 					submesh.name += "_submesh" + std::to_string(submeshIndex + 1);
 					submesh.indexCount = parser.meshes[submeshIndex].drawInfo.indexCount;
 					submesh.firstIndex = lvlData.indices.size();
+					submesh.vertexOffset = lvlData.vertices.size();
 					submesh.materialIndex = lvlData.materials.size();
 					lvlData.uniqueMeshes.push_back(submesh);
 
@@ -164,7 +147,7 @@ public:
 					int start = parser.meshes[submeshIndex].drawInfo.indexOffset;
 					int end = parser.meshes[submeshIndex].drawInfo.indexOffset + parser.meshes[submeshIndex].drawInfo.indexCount;
 					for (size_t i = start; i < end; i++)
-						lvlData.indices.push_back(parser.indices[i]);
+						lvlData.indices.push_back(parser.indices[i] + submesh.vertexOffset);
 					
 					//push back material per submesh
 					int matIndex = parser.meshes[submeshIndex].materialIndex;
@@ -175,13 +158,14 @@ public:
 				lvlData.uniqueMeshes[uniqueMeshIndex].name += "_submesh1";
 				lvlData.uniqueMeshes[uniqueMeshIndex].indexCount = parser.meshes[0].drawInfo.indexCount;
 				lvlData.uniqueMeshes[uniqueMeshIndex].firstIndex = lvlData.indices.size();
+				lvlData.uniqueMeshes[uniqueMeshIndex].vertexOffset = lvlData.vertices.size();
 				lvlData.uniqueMeshes[uniqueMeshIndex].materialIndex = lvlData.materials.size();
 				
 				//push back indices for first submest
 				int start = parser.meshes[0].drawInfo.indexOffset;
 				int end = parser.meshes[0].drawInfo.indexOffset + parser.meshes[0].drawInfo.indexCount;
 				for (size_t i = start; i < end; i++)
-					lvlData.indices.push_back(parser.indices[i]);
+					lvlData.indices.push_back(parser.indices[i] + lvlData.uniqueMeshes[uniqueMeshIndex].vertexOffset);
 				
 				//push back material per submesh
 				int matIndex = parser.meshes[0].materialIndex;
@@ -195,11 +179,12 @@ public:
 			{
 				lvlData.uniqueMeshes[uniqueMeshIndex].indexCount = parser.indexCount;
 				lvlData.uniqueMeshes[uniqueMeshIndex].firstIndex = lvlData.indices.size();
+				lvlData.uniqueMeshes[uniqueMeshIndex].vertexOffset = lvlData.vertices.size();
 				lvlData.uniqueMeshes[uniqueMeshIndex].materialIndex = lvlData.materials.size();
 				for (size_t i = 0; i < parser.vertexCount; i++)
 					lvlData.vertices.push_back(parser.vertices[i]);
 				for (size_t i = 0; i < parser.indexCount; i++)
-					lvlData.indices.push_back(parser.indices[i]);
+					lvlData.indices.push_back(parser.indices[i] + lvlData.uniqueMeshes[uniqueMeshIndex].vertexOffset);
 				lvlData.materials.push_back(parser.materials[0]);
 			}
 		}
@@ -488,45 +473,6 @@ public:
 				lvlData.uniqueMeshes[i].instanceCount, lvlData.uniqueMeshes[i].firstIndex, 
 				0, 0);
 		}
-		/*vkCmdDrawIndexed(commandBuffer, lvlData.uniqueMeshes[0].indexCount,
-					lvlData.uniqueMeshes[0].instanceCount, lvlData.uniqueMeshes[0].firstIndex,
-					lvlData.uniqueMeshes[0].vertexOffset, 0);*/
-
-		/*
-		sv.world = floorWorld;
-		matrixProxy.MultiplyMatrixF(view, projection, sv.viewProjection);
-
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
-		// now we can draw
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
-		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
-
-		sv.world = ceilingWorld;
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
-		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
-
-		sv.world = wallWorld1;
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
-		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
-
-		sv.world = wallWorld2;
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
-		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
-
-		sv.world = wallWorld3;
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
-		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
-
-		sv.world = wallWorld4;
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
-		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
-		*/
 	}
 
 	// Call before Render. Updates the view matrix based on user input.
