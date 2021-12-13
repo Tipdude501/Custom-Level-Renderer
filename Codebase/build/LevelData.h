@@ -18,7 +18,6 @@ public:
 	std::vector<UniqueMesh> uniqueMeshes;
 	std::vector<H2B::VERTEX> vertices;
 	std::vector<unsigned int> indices;
-	std::vector<H2B::MESH> meshes;
 	std::vector<H2B::MATERIAL> materials;
 
 	// Returns a pointer to a unique mesh if it exists

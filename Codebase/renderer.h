@@ -155,7 +155,7 @@ public:
 			}
 
 			// Copy data over
-			if (parser.meshCount > 1) 
+			if (parser.meshCount > 1) //group by material if submeshes exist
 			{
 				//push back submeshes, starting at submesh 2
 				for (size_t submeshIndex = 1; submeshIndex < parser.meshCount; submeshIndex++)
@@ -164,6 +164,7 @@ public:
 					submesh.name += "_submesh" + std::to_string(submeshIndex + 1);
 					submesh.indexCount = parser.meshes[submeshIndex].drawInfo.indexCount;
 					submesh.firstIndex = lvlData.indices.size();
+					submesh.materialIndex = lvlData.materials.size();
 					lvlData.uniqueMeshes.push_back(submesh);
 
 					//push back indices per submesh
@@ -171,12 +172,17 @@ public:
 					int end = parser.meshes[submeshIndex].drawInfo.indexOffset + parser.meshes[submeshIndex].drawInfo.indexCount;
 					for (size_t i = start; i < end; i++)
 						lvlData.indices.push_back(parser.indices[i]);
+					
+					//push back material per submesh
+					int matIndex = parser.meshes[submeshIndex].materialIndex;
+					lvlData.materials.push_back(parser.materials[matIndex]);
 				}
 
 				//then write the first submesh data to the original unique mesh spot
 				lvlData.uniqueMeshes[uniqueMeshIndex].name += "_submesh1";
 				lvlData.uniqueMeshes[uniqueMeshIndex].indexCount = parser.meshes[0].drawInfo.indexCount;
 				lvlData.uniqueMeshes[uniqueMeshIndex].firstIndex = lvlData.indices.size();
+				lvlData.uniqueMeshes[uniqueMeshIndex].materialIndex = lvlData.materials.size();
 				
 				//push back indices for first submest
 				int start = parser.meshes[0].drawInfo.indexOffset;
@@ -184,12 +190,15 @@ public:
 				for (size_t i = start; i < end; i++)
 					lvlData.indices.push_back(parser.indices[i]);
 				
+				//push back material per submesh
+				int matIndex = parser.meshes[0].materialIndex;
+				lvlData.materials.push_back(parser.materials[matIndex]);
 
 				// Push back all vertices
 				for (size_t j = 0; j < parser.vertexCount; j++)
 					lvlData.vertices.push_back(parser.vertices[j]);
 			}
-			else 
+			else //otherwise load data into existing unique mesh
 			{
 				lvlData.uniqueMeshes[uniqueMeshIndex].indexCount = parser.indexCount;
 				lvlData.uniqueMeshes[uniqueMeshIndex].firstIndex = lvlData.indices.size();
@@ -198,15 +207,8 @@ public:
 					lvlData.vertices.push_back(parser.vertices[i]);
 				for (size_t i = 0; i < parser.indexCount; i++)
 					lvlData.indices.push_back(parser.indices[i]);
+				lvlData.materials.push_back(parser.materials[0]);
 			}
-
-			/*lvlData.uniqueMeshes[i].indexCount = parser.indexCount;
-			lvlData.uniqueMeshes[i].firstIndex = lvlData.indices.size();
-			lvlData.uniqueMeshes[i].materialIndex = lvlData.materials.size();
-			for (size_t j = 0; j < parser.vertexCount; j++)
-				lvlData.vertices.push_back(parser.vertices[j]);
-			for (size_t j = 0; j < parser.indexCount; j++)
-				lvlData.indices.push_back(parser.indices[j]);*/
 		}
 
 		/***************** GEOMETRY BUFFER INITIALIZATION ******************/
