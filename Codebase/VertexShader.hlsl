@@ -1,15 +1,17 @@
 #pragma pack_matrix(row_major)
-
 struct VERTEX_IN
 {
-    float4 position : POSITION;
-    float4 color : COLOR;
+    float3 pos : POSITION;
+    float3 uvw;
+    float3 nrm : NORMAL;
 };
 
 struct VERTEX_OUT
 {
-    float4 position : SV_POSITION;
-    float4 color : COLOR;
+    float4 posH : SV_POSITION;
+    float3 nrmW : NORMAL;
+    float3 posW : WORLD;
+    float2 uv : TEXCOORD;
 };
 
 
@@ -20,12 +22,12 @@ cbuffer SHADER_VARS
     float4x4 viewProjection;
 };
 
-VERTEX_OUT main(VERTEX_IN inputVertex)
+VERTEX_OUT main(VERTEX_IN inputVertex) : SV_POSITION
 {
     VERTEX_OUT result;
-    result.position = mul(inputVertex.position, world);
-    result.position = mul(result.position, viewProjection);
-    result.color = inputVertex.color;
+    result.posH = float4(inputVertex.pos, 1);
+    result.posW = mul(result.posH, world);
+    result.posH = mul(float4(result.posW, 1), viewProjection);
     return result;
 }
 

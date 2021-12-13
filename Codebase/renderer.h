@@ -31,9 +31,12 @@ class Renderer
 	GW::GRAPHICS::GVulkanSurface vlk;
 	GW::CORE::GEventReceiver shutdown;
 
-	// LevelData
+	// Level data
 	LevelData lvlData;
-	std::string levelFilePath = "../../Assets/GameLevel.txt";
+	std::string levelFilePath = "../../Assets/Levels/TestLevel.txt";
+	
+	// Model data
+	H2B::Parser parser;
 
 	// User Input
 	GW::INPUT::GInput inputProxy;
@@ -45,12 +48,12 @@ class Renderer
 	// Matrices
 	GW::MATH::GMatrix matrixProxy;
 	GW::MATH::GVector vectorProxy;
-	GW::MATH::GMATRIXF floorWorld;
+	/*GW::MATH::GMATRIXF floorWorld;
 	GW::MATH::GMATRIXF ceilingWorld;
 	GW::MATH::GMATRIXF wallWorld1;
 	GW::MATH::GMATRIXF wallWorld2;
 	GW::MATH::GMATRIXF wallWorld3;
-	GW::MATH::GMATRIXF wallWorld4;
+	GW::MATH::GMATRIXF wallWorld4;*/
 	GW::MATH::GMATRIXF camera;
 	GW::MATH::GMATRIXF view;
 	GW::MATH::GMATRIXF projection;
@@ -93,65 +96,94 @@ public:
 
 	Renderer(GW::SYSTEM::GWindow _win, GW::GRAPHICS::GVulkanSurface _vlk)
 	{
-		// Load level data
-		std::vector <std::string> filenames;
-		std::vector<GW::MATH::GMATRIXF> matrices;
-		if(!GetGameLevelData(filenames, matrices))
-			std::cout << "Level Loading Error: \"" << levelFilePath << "\" did not open properly.";
-		for (size_t i = 0; i < filenames.size(); i++)
-		{
-			lvlData.AddInstance(filenames[i], matrices[i]);
-		}
-
 		win = _win;
 		vlk = _vlk;
 		unsigned int width, height;
 		win.GetClientWidth(width);
 		win.GetClientHeight(height);
 
+		// Create proxy's
 		inputProxy.Create(win);
 		controllerProxy.Create();
-
 		matrixProxy.Create();
 		vectorProxy.Create();
 
-		//init all
-		matrixProxy.IdentityF(floorWorld);
+		// Init box grid matrices
+		/*matrixProxy.IdentityF(floorWorld);
 		matrixProxy.IdentityF(ceilingWorld);
 		matrixProxy.IdentityF(wallWorld1);
 		matrixProxy.IdentityF(wallWorld2);
 		matrixProxy.IdentityF(wallWorld3);
 		matrixProxy.IdentityF(wallWorld4);
-
-		//floor
 		matrixProxy.RotateXGlobalF(floorWorld, 90.0f * TO_RADIANS, floorWorld);
 		floorWorld.row4 = { 0, -0.5f, 0, 1 };
-
 		matrixProxy.RotateXGlobalF(ceilingWorld, 90.0f * TO_RADIANS, ceilingWorld);
 		ceilingWorld.row4 = { 0, 0.5f, 0, 1 };
-
 		matrixProxy.RotateYGlobalF(wallWorld1, 90.0f * TO_RADIANS, wallWorld1);
 		wallWorld1.row4 = { -0.5f, 0, 0, 1 };
-
 		matrixProxy.RotateYGlobalF(wallWorld2, 90.0f * TO_RADIANS, wallWorld2);
 		wallWorld2.row4 = { 0.5f, 0, 0, 1 };
-
 		wallWorld3.row4 = { 0, 0, -0.5f, 1 };
-		wallWorld4.row4 = { 0, 0, 0.5f, 1 };
+		wallWorld4.row4 = { 0, 0, 0.5f, 1 };*/
 
-
+		// Init camera and view
 		GW::MATH::GVECTORF eye = { 0.5f, .2f, -0.5f };
 		GW::MATH::GVECTORF at = { 0.0f, 0.0f, 0.0f };
 		GW::MATH::GVECTORF up = { 0.0f, 1.0f, 0.0f };
 		matrixProxy.LookAtLHF(eye, at, up, view);
 
-		/***************** GEOMETRY INTIALIZATION ******************/
-		// Grab the device & physical device so we can allocate some stuff
+		/***************** LOAD LEVEL AND MODEL DATA ******************/
+		// Load level data
+		std::vector <std::string> filenames;
+		std::vector<GW::MATH::GMATRIXF> matrices;
+		if (!GetGameLevelData(filenames, matrices))
+			std::cout << "Level Loading Error: \"" << levelFilePath << "\" did not open properly.\n";
+		for (size_t i = 0; i < filenames.size(); i++)
+		{
+			lvlData.AddInstance(filenames[i], matrices[i]);
+		}
+
+		// Load model data
+		for (size_t i = 0; i < lvlData.uniqueMeshes.size(); i++)
+		{
+			// Parse h2b file
+			std::string modelFilePath = "../../Assets/Models/" + lvlData.uniqueMeshes[i].name + ".h2b";
+			if (!parser.Parse(modelFilePath.c_str())) {
+				std::cout << "Model Loading Error: \"" << modelFilePath << "\" did not open properly.\n";
+				continue;
+			}
+
+			// Copy data over
+			lvlData.uniqueMeshes[i].indexCount = parser.indexCount;
+			lvlData.uniqueMeshes[i].firstIndex = lvlData.indices.size();
+			lvlData.uniqueMeshes[i].vertexOffset = lvlData.vertices.size();
+			for (size_t i = 0; i < parser.vertexCount; i++) { lvlData.vertices.push_back(parser.vertices[i]); }
+			for (size_t i = 0; i < parser.indexCount; i++) { lvlData.indices.push_back(parser.indices[i]); }
+			for (size_t i = 0; i < parser.meshCount; i++) { 
+				
+			}
+			// TODO: Add in materials and other data
+		}
+
+		/***************** GEOMETRY BUFFER INITIALIZATION ******************/
+		// Grab the device & physical device
 		VkPhysicalDevice physicalDevice = nullptr;
 		vlk.GetDevice((void**)&device);
 		vlk.GetPhysicalDevice((void**)&physicalDevice);
+		
+		// Transfer vertices to vertex buffer
+		GvkHelper::create_buffer(physicalDevice, device, lvlData.vertices.size() * sizeof(lvlData.vertices[0]),
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexHandle, &vertexData);
+		GvkHelper::write_to_buffer(device, vertexData, lvlData.vertices.data(), lvlData.vertices.size() * sizeof(lvlData.vertices[0]));
 
+		// Transfer indices to index buffer
+		GvkHelper::create_buffer(physicalDevice, device, lvlData.indices.size() * sizeof(lvlData.indices[0]),
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexHandle, &indexData);
+		GvkHelper::write_to_buffer(device, indexData, lvlData.indices.data(), lvlData.indices.size() * sizeof(lvlData.indices[0]));
 
+		/*
 		// Create Vertex Buffer
 		float size = 25.0f;
 		std::vector<Vertex> tempVerts;
@@ -172,12 +204,12 @@ public:
 		std::copy(tempVerts.begin(), tempVerts.end(), verts);
 
 
-
 		// Transfer triangle data to the vertex buffer. (staging would be prefered here)
 		GvkHelper::create_buffer(physicalDevice, device, sizeof(verts),
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexHandle, &vertexData);
 		GvkHelper::write_to_buffer(device, vertexData, verts, sizeof(verts));
+		*/
 
 		/***************** SHADER INTIALIZATION ******************/
 		// Intialize runtime shader compiler HLSL -> SPIRV
@@ -188,6 +220,7 @@ public:
 #ifndef NDEBUG
 		shaderc_compile_options_set_generate_debug_info(options);
 #endif
+		
 		// Create Vertex Shader
 		shaderc_compilation_result_t result = shaderc_compile_into_spv( // compile
 			compiler, vertexShaderSource, strlen(vertexShaderSource),
@@ -196,7 +229,8 @@ public:
 			std::cout << "Vertex Shader Errors: " << shaderc_result_get_error_message(result) << std::endl;
 		GvkHelper::create_shader_module(device, shaderc_result_get_length(result), // load into Vulkan
 			(char*)shaderc_result_get_bytes(result), &vertexShader);
-		shaderc_result_release(result); // done
+		shaderc_result_release(result);
+		
 		// Create Pixel Shader
 		result = shaderc_compile_into_spv( // compile
 			compiler, pixelShaderSource, strlen(pixelShaderSource),
@@ -205,7 +239,8 @@ public:
 			std::cout << "Pixel Shader Errors: " << shaderc_result_get_error_message(result) << std::endl;
 		GvkHelper::create_shader_module(device, shaderc_result_get_length(result), // load into Vulkan
 			(char*)shaderc_result_get_bytes(result), &pixelShader);
-		shaderc_result_release(result); // done
+		shaderc_result_release(result);
+		
 		// Free runtime shader compiler resources
 		shaderc_compile_options_release(options);
 		shaderc_compiler_release(compiler);
@@ -215,37 +250,43 @@ public:
 		VkRenderPass renderPass;
 		vlk.GetRenderPass((void**)&renderPass);
 		VkPipelineShaderStageCreateInfo stage_create_info[2] = {};
+		
 		// Create Stage Info for Vertex Shader
 		stage_create_info[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		stage_create_info[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
 		stage_create_info[0].module = vertexShader;
 		stage_create_info[0].pName = "main";
+		
 		// Create Stage Info for Fragment Shader
 		stage_create_info[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		stage_create_info[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 		stage_create_info[1].module = pixelShader;
 		stage_create_info[1].pName = "main";
+		
 		// Assembly State
 		VkPipelineInputAssemblyStateCreateInfo assembly_create_info = {};
 		assembly_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		assembly_create_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		assembly_create_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		assembly_create_info.primitiveRestartEnable = false;
+		
 		// Vertex Input State
 		VkVertexInputBindingDescription vertex_binding_description = {};
 		vertex_binding_description.binding = 0;
-		vertex_binding_description.stride = sizeof(Vertex);
+		vertex_binding_description.stride = sizeof(H2B::VERTEX);
 		vertex_binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-		VkVertexInputAttributeDescription vertex_attribute_description[2] = {
-			{ 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, position) },	//position
-			{ 1, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, color) }		//color
+		VkVertexInputAttributeDescription vertex_attribute_description[3] = {
+			{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(H2B::VERTEX, pos) },
+			{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(H2B::VERTEX, uvw) },
+			{ 2, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(H2B::VERTEX, nrm) }
 		};
 		VkPipelineVertexInputStateCreateInfo input_vertex_info = {};
 		input_vertex_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		input_vertex_info.vertexBindingDescriptionCount = 1;
 		input_vertex_info.pVertexBindingDescriptions = &vertex_binding_description;
-		input_vertex_info.vertexAttributeDescriptionCount = 2;
+		input_vertex_info.vertexAttributeDescriptionCount = 3;
 		input_vertex_info.pVertexAttributeDescriptions = vertex_attribute_description;
-		// Viewport State (we still need to set this up even though we will overwrite the values)
+		
+		// Viewport State 
 		VkViewport viewport = {
 			0, 0, static_cast<float>(width), static_cast<float>(height), 0, 1
 		};
@@ -256,6 +297,7 @@ public:
 		viewport_create_info.pViewports = &viewport;
 		viewport_create_info.scissorCount = 1;
 		viewport_create_info.pScissors = &scissor;
+		
 		// Rasterizer State
 		VkPipelineRasterizationStateCreateInfo rasterization_create_info = {};
 		rasterization_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -269,6 +311,7 @@ public:
 		rasterization_create_info.depthBiasClamp = 0.0f;
 		rasterization_create_info.depthBiasConstantFactor = 0.0f;
 		rasterization_create_info.depthBiasSlopeFactor = 0.0f;
+		
 		// Multisampling State
 		VkPipelineMultisampleStateCreateInfo multisample_create_info = {};
 		multisample_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -278,6 +321,7 @@ public:
 		multisample_create_info.pSampleMask = VK_NULL_HANDLE;
 		multisample_create_info.alphaToCoverageEnable = VK_FALSE;
 		multisample_create_info.alphaToOneEnable = VK_FALSE;
+		
 		// Depth-Stencil State
 		VkPipelineDepthStencilStateCreateInfo depth_stencil_create_info = {};
 		depth_stencil_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -288,6 +332,7 @@ public:
 		depth_stencil_create_info.minDepthBounds = 0.0f;
 		depth_stencil_create_info.maxDepthBounds = 1.0f;
 		depth_stencil_create_info.stencilTestEnable = VK_FALSE;
+		
 		// Color Blending Attachment & State
 		VkPipelineColorBlendAttachmentState color_blend_attachment_state = {};
 		color_blend_attachment_state.colorWriteMask = 0xF;
@@ -308,6 +353,7 @@ public:
 		color_blend_create_info.blendConstants[1] = 0.0f;
 		color_blend_create_info.blendConstants[2] = 0.0f;
 		color_blend_create_info.blendConstants[3] = 0.0f;
+		
 		// Dynamic State 
 		VkDynamicState dynamic_state[2] = {
 			// By setting these we do not need to re-create the pipeline on Resize
@@ -318,6 +364,7 @@ public:
 		dynamic_create_info.dynamicStateCount = 2;
 		dynamic_create_info.pDynamicStates = dynamic_state;
 
+		// Push constant
 		VkPushConstantRange push_constant;
 		push_constant.offset = 0;
 		push_constant.size = sizeof(ShaderVars);
@@ -332,7 +379,8 @@ public:
 		pipeline_layout_create_info.pPushConstantRanges = &push_constant;
 		vkCreatePipelineLayout(device, &pipeline_layout_create_info,
 			nullptr, &pipelineLayout);
-		// Pipeline State... (FINALLY) 
+		
+		// Pipeline State
 		VkGraphicsPipelineCreateInfo pipeline_create_info = {};
 		pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline_create_info.stageCount = 2;
@@ -355,23 +403,23 @@ public:
 		/***************** CLEANUP / SHUTDOWN ******************/
 		// GVulkanSurface will inform us when to release any allocated resources
 		shutdown.Create(vlk, [&]() {
-			if (+shutdown.Find(GW::GRAPHICS::GVulkanSurface::Events::RELEASE_RESOURCES, true)) {
-				CleanUp(); // unlike D3D we must be careful about destroy timing
-			}
-			});
+			if (+shutdown.Find(GW::GRAPHICS::GVulkanSurface::Events::RELEASE_RESOURCES, true)) 
+				CleanUp();
+		});
 	}
+	
 	void Render()
 	{
-		// grab the current Vulkan commandBuffer
+		// Grab the current Vulkan commandBuffer
 		unsigned int currentBuffer;
 		vlk.GetSwapchainCurrentImage(currentBuffer);
 		VkCommandBuffer commandBuffer;
 		vlk.GetCommandBuffer(currentBuffer, (void**)&commandBuffer);
-		// what is the current client area dimensions?
+		
+		// Setup the pipeline's dynamic settings
 		unsigned int width, height;
 		win.GetClientWidth(width);
 		win.GetClientHeight(height);
-		// setup the pipeline's dynamic settings
 		VkViewport viewport = {
 			0, 0, static_cast<float>(width), static_cast<float>(height), 0, 1
 		};
@@ -380,11 +428,32 @@ public:
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
+		// Build projection matrix
 		float aspect;
 		vlk.GetAspectRatio(aspect);
 		matrixProxy.ProjectionVulkanLHF(65.0f * TO_RADIANS, aspect, 0.1f, 100.0f, projection);
 
+		// Set shader vars
 		ShaderVars sv;
+		sv.world = GW::MATH::GIdentityMatrixF;
+		matrixProxy.MultiplyMatrixF(view, projection, sv.viewProjection);
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
+
+		// Draw
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, indexHandle, offsets[0], VK_INDEX_TYPE_UINT32);
+		for (size_t i = 0; i < lvlData.uniqueMeshes.size(); i++)
+		{
+			vkCmdDrawIndexed(commandBuffer, lvlData.uniqueMeshes[i].indexCount, 
+				lvlData.uniqueMeshes[i].instanceCount, lvlData.uniqueMeshes[i].firstIndex, 
+				lvlData.uniqueMeshes[i].vertexOffset, 0);
+		}
+		/*vkCmdDrawIndexed(commandBuffer, lvlData.uniqueMeshes[0].indexCount,
+					lvlData.uniqueMeshes[0].instanceCount, lvlData.uniqueMeshes[0].firstIndex,
+					lvlData.uniqueMeshes[0].vertexOffset, 0);*/
+
+		/*
 		sv.world = floorWorld;
 		matrixProxy.MultiplyMatrixF(view, projection, sv.viewProjection);
 
@@ -418,6 +487,7 @@ public:
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
 		vkCmdDraw(commandBuffer, (25 * 4) + 4, 1, 0, 0);
+		*/
 	}
 
 	// Call before Render. Updates the view matrix based on user input.
@@ -572,13 +642,16 @@ public:
 private:
 	void CleanUp()
 	{
-		// wait till everything has completed
 		vkDeviceWaitIdle(device);
-		// Release allocated buffers, shaders & pipeline
+
 		vkDestroyBuffer(device, vertexHandle, nullptr);
 		vkFreeMemory(device, vertexData, nullptr);
+		vkDestroyBuffer(device, indexHandle, nullptr);
+		vkFreeMemory(device, indexData, nullptr);
+
 		vkDestroyShaderModule(device, vertexShader, nullptr);
 		vkDestroyShaderModule(device, pixelShader, nullptr);
+
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyPipeline(device, pipeline, nullptr);
 	}
