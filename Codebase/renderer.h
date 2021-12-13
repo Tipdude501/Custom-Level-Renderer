@@ -33,7 +33,7 @@ class Renderer
 
 	// Level data
 	LevelData lvlData;
-	std::string levelFilePath = "../../Assets/Levels/TestLevel.txt";
+	std::string levelFilePath = "../../Assets/Levels/TestLevel2.txt";
 	
 	// Model data
 	H2B::Parser parser;
