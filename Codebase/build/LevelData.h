@@ -10,7 +10,7 @@ public:
 		unsigned int indexCount;
 		unsigned int instanceCount = 1;
 		unsigned int firstIndex;
-		unsigned int vertexOffset;
+		unsigned int materialIndex;
 		std::vector<GW::MATH::GMATRIXF> matrices;
 	};
 
@@ -80,6 +80,7 @@ public:
 //		drawIndexed(command_buffer, lvlData.uniqueMeshes[i].indexCount,
 //			lvlData.uniqueMeshes[i].instanceCount, lvlData.uniqueMeshes[i].firstIndex,
 //			lvlData.uniqueMeshes[i].vertexOffset, 0);
+// pass matrices, 
 
 //////
 //	LevelData

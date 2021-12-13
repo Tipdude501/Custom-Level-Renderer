@@ -144,25 +144,69 @@ public:
 		}
 
 		// Load model data
-		for (size_t i = 0; i < lvlData.uniqueMeshes.size(); i++)
+		size_t uniqueMeshCount = lvlData.uniqueMeshes.size();
+		for (size_t uniqueMeshIndex = 0; uniqueMeshIndex < uniqueMeshCount; uniqueMeshIndex++)
 		{
 			// Parse h2b file
-			std::string modelFilePath = "../../Assets/Models/" + lvlData.uniqueMeshes[i].name + ".h2b";
+			std::string modelFilePath = "../../Assets/Models/" + lvlData.uniqueMeshes[uniqueMeshIndex].name + ".h2b";
 			if (!parser.Parse(modelFilePath.c_str())) {
 				std::cout << "Model Loading Error: \"" << modelFilePath << "\" did not open properly.\n";
 				continue;
 			}
 
 			// Copy data over
-			lvlData.uniqueMeshes[i].indexCount = parser.indexCount;
-			lvlData.uniqueMeshes[i].firstIndex = lvlData.indices.size();
-			lvlData.uniqueMeshes[i].vertexOffset = lvlData.vertices.size();
-			for (size_t i = 0; i < parser.vertexCount; i++) { lvlData.vertices.push_back(parser.vertices[i]); }
-			for (size_t i = 0; i < parser.indexCount; i++) { lvlData.indices.push_back(parser.indices[i]); }
-			for (size_t i = 0; i < parser.meshCount; i++) { 
+			if (parser.meshCount > 1) 
+			{
+				//push back submeshes, starting at submesh 2
+				for (size_t submeshIndex = 1; submeshIndex < parser.meshCount; submeshIndex++)
+				{
+					LevelData::UniqueMesh submesh = lvlData.uniqueMeshes[uniqueMeshIndex];
+					submesh.name += "_submesh" + std::to_string(submeshIndex + 1);
+					submesh.indexCount = parser.meshes[submeshIndex].drawInfo.indexCount;
+					submesh.firstIndex = lvlData.indices.size();
+					lvlData.uniqueMeshes.push_back(submesh);
+
+					//push back indices per submesh
+					int start = parser.meshes[submeshIndex].drawInfo.indexOffset;
+					int end = parser.meshes[submeshIndex].drawInfo.indexOffset + parser.meshes[submeshIndex].drawInfo.indexCount;
+					for (size_t i = start; i < end; i++)
+						lvlData.indices.push_back(parser.indices[i]);
+				}
+
+				//then write the first submesh data to the original unique mesh spot
+				lvlData.uniqueMeshes[uniqueMeshIndex].name += "_submesh1";
+				lvlData.uniqueMeshes[uniqueMeshIndex].indexCount = parser.meshes[0].drawInfo.indexCount;
+				lvlData.uniqueMeshes[uniqueMeshIndex].firstIndex = lvlData.indices.size();
 				
+				//push back indices for first submest
+				int start = parser.meshes[0].drawInfo.indexOffset;
+				int end = parser.meshes[0].drawInfo.indexOffset + parser.meshes[0].drawInfo.indexCount;
+				for (size_t i = start; i < end; i++)
+					lvlData.indices.push_back(parser.indices[i]);
+				
+
+				// Push back all vertices
+				for (size_t j = 0; j < parser.vertexCount; j++)
+					lvlData.vertices.push_back(parser.vertices[j]);
 			}
-			// TODO: Add in materials and other data
+			else 
+			{
+				lvlData.uniqueMeshes[uniqueMeshIndex].indexCount = parser.indexCount;
+				lvlData.uniqueMeshes[uniqueMeshIndex].firstIndex = lvlData.indices.size();
+				lvlData.uniqueMeshes[uniqueMeshIndex].materialIndex = lvlData.materials.size();
+				for (size_t i = 0; i < parser.vertexCount; i++)
+					lvlData.vertices.push_back(parser.vertices[i]);
+				for (size_t i = 0; i < parser.indexCount; i++)
+					lvlData.indices.push_back(parser.indices[i]);
+			}
+
+			/*lvlData.uniqueMeshes[i].indexCount = parser.indexCount;
+			lvlData.uniqueMeshes[i].firstIndex = lvlData.indices.size();
+			lvlData.uniqueMeshes[i].materialIndex = lvlData.materials.size();
+			for (size_t j = 0; j < parser.vertexCount; j++)
+				lvlData.vertices.push_back(parser.vertices[j]);
+			for (size_t j = 0; j < parser.indexCount; j++)
+				lvlData.indices.push_back(parser.indices[j]);*/
 		}
 
 		/***************** GEOMETRY BUFFER INITIALIZATION ******************/
@@ -447,7 +491,7 @@ public:
 		{
 			vkCmdDrawIndexed(commandBuffer, lvlData.uniqueMeshes[i].indexCount, 
 				lvlData.uniqueMeshes[i].instanceCount, lvlData.uniqueMeshes[i].firstIndex, 
-				lvlData.uniqueMeshes[i].vertexOffset, 0);
+				0, 0);
 		}
 		/*vkCmdDrawIndexed(commandBuffer, lvlData.uniqueMeshes[0].indexCount,
 					lvlData.uniqueMeshes[0].instanceCount, lvlData.uniqueMeshes[0].firstIndex,

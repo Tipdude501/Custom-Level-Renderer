@@ -1,4 +1,17 @@
 #pragma pack_matrix(row_major)
+#define MAX_INSTANCE_PER_DRAW 1024
+cbuffer INSTANCE_UNIFORMS
+{
+    matrix instance_transforms[MAX_INSTANCE_PER_DRAW];
+};
+
+[[vk::push_constant]]
+cbuffer SHADER_VARS
+{
+    float4x4 world;
+    float4x4 viewProjection;
+};
+
 struct VERTEX_IN
 {
     float3 pos : POSITION;
@@ -12,14 +25,6 @@ struct VERTEX_OUT
     float3 nrmW : NORMAL;
     float3 posW : WORLD;
     float2 uv : TEXCOORD;
-};
-
-
-[[vk::push_constant]]
-cbuffer SHADER_VARS
-{
-    float4x4 world;
-    float4x4 viewProjection;
 };
 
 VERTEX_OUT main(VERTEX_IN inputVertex) : SV_POSITION
