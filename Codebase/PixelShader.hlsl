@@ -1,3 +1,31 @@
+#pragma pack_matrix(row_major)
+#define MAX_INSTANCE_PER_DRAW 1024
+struct MATERIAL
+{
+    float3 Kd; // diffuse reflectivity
+    float d; // dissolve (transparency)
+    float3 Ks; // specular reflectivity
+    float Ns; // specular exponent
+    float3 Ka; // ambient reflectivity
+    float sharpness; // local reflection map sharpness
+    float3 Tf; // transmission filter
+    float Ni; // optical density (index of refraction)
+    float3 Ke; // emissive reflectivity
+    int illum; // illumination model
+};
+struct SHADER_VARIABLES
+{
+    float4 lightDirection;
+    float4 lightColor;
+    float4 ambientTerm;
+    float4 cameraPosition;
+    float4x4 viewMatrix;
+    float4x4 projectionMatrix;
+    float4x4 worldMatrix[MAX_INSTANCE_PER_DRAW];
+    MATERIAL materials[MAX_INSTANCE_PER_DRAW];
+};
+//StructuredBuffer<SHADER_VARIABLES> SceneData;
+
 struct VERTEX_IN
 {
     float4 posH : SV_POSITION;
@@ -8,8 +36,23 @@ struct VERTEX_IN
 
 float4 main(VERTEX_IN input) : SV_TARGET
 {
-    return float4(0.5f, 0.5f, 0.75f, 0); 
+    //return float4(0.5f, 0.5f, 0.75f, 0); 
+   
+    float4 finalColor = 1;
+    float4 ambientTerm = { 0.25f, 0.25f, 0.35f };
+    float4 lightDirection = { -1.0f, -1.0f, 2.0f };
+    float4 lightColor = { 0.9f, 0.9f, 1.0f, 1.0f };
+        
+    input.nrmW = normalize(input.nrmW);
+	
+    // TODO: Part 4c
+    finalColor = saturate(dot(-lightDirection, float4(input.nrmW, 0)));
+    finalColor = saturate(finalColor + ambientTerm);
+    finalColor *= lightColor * 0.5f;
+    
+    return finalColor;
 }
+
 
 /*
 // TODO: Part 3e

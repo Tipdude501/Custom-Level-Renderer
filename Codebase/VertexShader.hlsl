@@ -30,10 +30,15 @@ struct VERTEX_OUT
 VERTEX_OUT main(VERTEX_IN inputVertex) : SV_POSITION
 {
     VERTEX_OUT result;
+    
     result.posH = float4(inputVertex.pos, 1);
     result.posW = mul(result.posH, world);
     result.posH = mul(float4(result.posW, 1), viewProjection);
-    return result;
+    
+    result.nrmW = mul(float4(inputVertex.nrm, 0), world);
+    result.uv = float2(inputVertex.uvw[0], inputVertex.uvw[1]);
+    
+	return result;
 }
 
 /*

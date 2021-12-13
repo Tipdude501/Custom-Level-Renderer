@@ -15,10 +15,9 @@
 //Forward declarations
 std::string ShaderAsString(const char* shaderFilePath);
 
-// Simple Vertex Shader
+// Shaders
 std::string vertexShaderPath = ShaderAsString("../VertexShader.hlsl");
 const char* vertexShaderSource = vertexShaderPath.c_str();
-// Simple Pixel Shader
 std::string pixelShaderPath = ShaderAsString("../PixelShader.hlsl");
 const char* pixelShaderSource = pixelShaderPath.c_str();
 
@@ -33,7 +32,7 @@ class Renderer
 
 	// Level data
 	LevelData lvlData;
-	std::string levelFilePath = "../../Assets/Levels/TestLevel2.txt";
+	std::string levelFilePath = "../../Assets/Levels/TestLevel.txt";
 	
 	// Model data
 	H2B::Parser parser;
@@ -48,12 +47,6 @@ class Renderer
 	// Matrices
 	GW::MATH::GMatrix matrixProxy;
 	GW::MATH::GVector vectorProxy;
-	/*GW::MATH::GMATRIXF floorWorld;
-	GW::MATH::GMATRIXF ceilingWorld;
-	GW::MATH::GMATRIXF wallWorld1;
-	GW::MATH::GMATRIXF wallWorld2;
-	GW::MATH::GMATRIXF wallWorld3;
-	GW::MATH::GMATRIXF wallWorld4;*/
 	GW::MATH::GMATRIXF camera;
 	GW::MATH::GMATRIXF view;
 	GW::MATH::GMATRIXF projection;
