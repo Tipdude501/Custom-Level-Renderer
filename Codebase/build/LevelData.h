@@ -35,6 +35,14 @@ public:
 	// Add an instance of a unique mesh OR create a new unique mesh if does not exist
 	void AddInstance(std::string _meshName, GW::MATH::GMATRIXF _matrix)
 	{
+		// NOTE: 
+		// There is currently an instance-per-draw limit of 1024 
+		// in the pixel and vertex shaders. This AddInstance setup is
+		// currently designed to have no limit on instance count and 
+		// will cause bugs if there are more than 1024 duplicates of an
+		// object in a scene.
+		//
+		
 		UniqueMesh* instance = GetMesh(_meshName);
 		if (instance)
 		{
