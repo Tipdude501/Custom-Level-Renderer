@@ -147,7 +147,7 @@ public:
 					int start = parser.meshes[submeshIndex].drawInfo.indexOffset;
 					int end = parser.meshes[submeshIndex].drawInfo.indexOffset + parser.meshes[submeshIndex].drawInfo.indexCount;
 					for (size_t i = start; i < end; i++)
-						lvlData.indices.push_back(parser.indices[i] + submesh.vertexOffset);
+						lvlData.indices.push_back(parser.indices[i]);
 					
 					//push back material per submesh
 					int matIndex = parser.meshes[submeshIndex].materialIndex;
@@ -165,7 +165,7 @@ public:
 				int start = parser.meshes[0].drawInfo.indexOffset;
 				int end = parser.meshes[0].drawInfo.indexOffset + parser.meshes[0].drawInfo.indexCount;
 				for (size_t i = start; i < end; i++)
-					lvlData.indices.push_back(parser.indices[i] + lvlData.uniqueMeshes[uniqueMeshIndex].vertexOffset);
+					lvlData.indices.push_back(parser.indices[i]);
 				
 				//push back material per submesh
 				int matIndex = parser.meshes[0].materialIndex;
@@ -184,7 +184,7 @@ public:
 				for (size_t i = 0; i < parser.vertexCount; i++)
 					lvlData.vertices.push_back(parser.vertices[i]);
 				for (size_t i = 0; i < parser.indexCount; i++)
-					lvlData.indices.push_back(parser.indices[i] + lvlData.uniqueMeshes[uniqueMeshIndex].vertexOffset);
+					lvlData.indices.push_back(parser.indices[i]);
 				lvlData.materials.push_back(parser.materials[0]);
 			}
 		}
@@ -471,7 +471,7 @@ public:
 		{
 			vkCmdDrawIndexed(commandBuffer, lvlData.uniqueMeshes[i].indexCount, 
 				lvlData.uniqueMeshes[i].instanceCount, lvlData.uniqueMeshes[i].firstIndex, 
-				0, 0);
+				lvlData.uniqueMeshes[i].vertexOffset, 0);
 		}
 	}
 
