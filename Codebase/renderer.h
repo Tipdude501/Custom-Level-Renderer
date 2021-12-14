@@ -459,16 +459,17 @@ public:
 
 		// Set shader vars
 		ShaderVars sv;
-		sv.world = GW::MATH::GIdentityMatrixF;
 		matrixProxy.MultiplyMatrixF(view, projection, sv.viewProjection);
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
-
+		
 		// Draw
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, indexHandle, offsets[0], VK_INDEX_TYPE_UINT32);
 		for (size_t i = 0; i < lvlData.uniqueMeshes.size(); i++)
 		{
+			sv.world = lvlData.uniqueMeshes[i].matrices[0];
+			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
+
 			vkCmdDrawIndexed(commandBuffer, lvlData.uniqueMeshes[i].indexCount, 
 				lvlData.uniqueMeshes[i].instanceCount, lvlData.uniqueMeshes[i].firstIndex, 
 				lvlData.uniqueMeshes[i].vertexOffset, 0);
