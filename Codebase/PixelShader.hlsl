@@ -17,7 +17,6 @@ struct SHADER_VARIABLES
     int textureIndex;
     int padding[14];
     matrix viewProjection;
-    matrix world;
     matrix matrices[MAX_INSTANCE_PER_DRAW];
 };
 StructuredBuffer<SHADER_VARIABLES> sv;

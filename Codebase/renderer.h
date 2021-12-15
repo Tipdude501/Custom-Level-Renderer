@@ -64,7 +64,6 @@ class Renderer
 		int textureIndex;
 		int padding[14];
 		GW::MATH::GMATRIXF viewProjection;
-		GW::MATH::GMATRIXF world;
 		GW::MATH::GMATRIXF matrices[MAX_INSTANCE_PER_DRAW];
 	};
 	ShaderVariables shaderVars;
@@ -101,7 +100,7 @@ public:
 		vectorProxy.Create();
 
 		// Init camera and view
-		GW::MATH::GVECTORF eye = { 2.0f, 2.0f, 2.0f };
+		GW::MATH::GVECTORF eye = { 0.5f, 0.5f, -0.5f };
 		GW::MATH::GVECTORF at = { 0.0f, 0.0f, 0.0f };
 		GW::MATH::GVECTORF up = { 0.0f, 1.0f, 0.0f };
 		matrixProxy.LookAtLHF(eye, at, up, view);
