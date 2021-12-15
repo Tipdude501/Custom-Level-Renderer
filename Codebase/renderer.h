@@ -32,7 +32,7 @@ class Renderer
 
 	// Level data
 	LevelData lvlData;
-	std::string levelFilePath = "../../Assets/Levels/GameLevel.txt";
+	std::string levelFilePath = "../../Assets/Levels/TestLevel2.txt";
 	
 	// Model data
 	H2B::Parser parser;
@@ -51,6 +51,24 @@ class Renderer
 	GW::MATH::GMATRIXF view;
 	GW::MATH::GMATRIXF projection;
 
+	// Shader uniforms
+	std::vector<VkBuffer> svHandle;
+	std::vector<VkDeviceMemory> svData;
+	VkDescriptorSetLayout svDescriptorLayout = nullptr;
+	std::vector<VkDescriptorSet> svDescriptorSet;
+	VkDescriptorPool descriptorPool = nullptr;
+	unsigned int max_frames = 0;
+	#define MAX_INSTANCE_PER_DRAW 1024
+	struct ShaderVariables {
+		int materialIndex;
+		int textureIndex;
+		int padding[14];
+		GW::MATH::GMATRIXF viewProjection;
+		GW::MATH::GMATRIXF world;
+		GW::MATH::GMATRIXF matrices[MAX_INSTANCE_PER_DRAW];
+	};
+	ShaderVariables shaderVars;
+
 	// Vulkan objects
 	VkDevice device = nullptr;
 	VkBuffer vertexHandle = nullptr;
@@ -63,29 +81,10 @@ class Renderer
 	VkPipelineLayout pipelineLayout = nullptr;
 
 public:
-	struct Vertex {
-		float position[4];
-		float color[4];
-
-		Vertex(
-			float x = 0, float y = 0, float z = 0, float w = 1,
-			float r = 0, float g = 0, float b = 0, float a = 1) {
-			position[0] = x;
-			position[1] = y;
-			position[2] = z;
-			position[3] = w;
-			color[0] = r;
-			color[1] = g;
-			color[2] = b;
-			color[3] = a;
-		}
-	};
-
-	struct ShaderVars {
-		GW::MATH::GMATRIXF world;
-		GW::MATH::GMATRIXF viewProjection;
-	};
-
+	//struct ShaderVars {
+	//	GW::MATH::GMATRIXF world;
+	//	GW::MATH::GMATRIXF viewProjection;
+	//};
 
 	Renderer(GW::SYSTEM::GWindow _win, GW::GRAPHICS::GVulkanSurface _vlk)
 	{
@@ -102,7 +101,7 @@ public:
 		vectorProxy.Create();
 
 		// Init camera and view
-		GW::MATH::GVECTORF eye = { 0.5f, .2f, -0.5f };
+		GW::MATH::GVECTORF eye = { 2.0f, 2.0f, 2.0f };
 		GW::MATH::GVECTORF at = { 0.0f, 0.0f, 0.0f };
 		GW::MATH::GVECTORF up = { 0.0f, 1.0f, 0.0f };
 		matrixProxy.LookAtLHF(eye, at, up, view);
@@ -189,7 +188,7 @@ public:
 			}
 		}
 
-		/***************** GEOMETRY BUFFER INITIALIZATION ******************/
+		/***************** BUFFER INITIALIZATION ******************/
 		// Grab the device & physical device
 		VkPhysicalDevice physicalDevice = nullptr;
 		vlk.GetDevice((void**)&device);
@@ -207,33 +206,18 @@ public:
 			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexHandle, &indexData);
 		GvkHelper::write_to_buffer(device, indexData, lvlData.indices.data(), lvlData.indices.size() * sizeof(lvlData.indices[0]));
 
-		/*
-		// Create Vertex Buffer
-		float size = 25.0f;
-		std::vector<Vertex> tempVerts;
-		float span = 0.5f;
-		float delta = (span * 2.0f) / size;
-		for (float i = 0, j = span; i <= size; i++, j -= delta)
+
+		// Create a storage buffer for per-draw call shader variables
+		vlk.GetSwapchainImageCount(max_frames);
+		svHandle.resize(max_frames);
+		svData.resize(max_frames);
+		for (size_t i = 0; i < max_frames; i++)
 		{
-			tempVerts.push_back(Vertex(span, j));
-			tempVerts.push_back(Vertex(-span, j));
+			GvkHelper::create_buffer(physicalDevice, device, sizeof(ShaderVariables),
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &svHandle[i], &svData[i]);
+			GvkHelper::write_to_buffer(device, svData[i], &shaderVars, sizeof(ShaderVariables));
 		}
-		for (float i = 0, j = span; i <= size; i++, j -= delta)
-		{
-			tempVerts.push_back(Vertex(j, span));
-			tempVerts.push_back(Vertex(j, -span));
-		}
-
-		Vertex verts[(25 * 4) + 4];
-		std::copy(tempVerts.begin(), tempVerts.end(), verts);
-
-
-		// Transfer triangle data to the vertex buffer. (staging would be prefered here)
-		GvkHelper::create_buffer(physicalDevice, device, sizeof(verts),
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexHandle, &vertexData);
-		GvkHelper::write_to_buffer(device, vertexData, verts, sizeof(verts));
-		*/
 
 		/***************** SHADER INTIALIZATION ******************/
 		// Intialize runtime shader compiler HLSL -> SPIRV
@@ -388,19 +372,79 @@ public:
 		dynamic_create_info.dynamicStateCount = 2;
 		dynamic_create_info.pDynamicStates = dynamic_state;
 
-		// Push constant
-		VkPushConstantRange push_constant;
-		push_constant.offset = 0;
-		push_constant.size = sizeof(ShaderVars);
-		push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		// Instance Uniform Buffer descriptor layout
+		VkDescriptorSetLayoutBinding svDescriptorLayoutBinding = {};
+		svDescriptorLayoutBinding.binding = 0;
+		svDescriptorLayoutBinding.descriptorCount = 1;
+		svDescriptorLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		svDescriptorLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+		svDescriptorLayoutBinding.pImmutableSamplers = nullptr;
+		VkDescriptorSetLayoutCreateInfo svDescriptorCreateInfo = {};
+		svDescriptorCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		svDescriptorCreateInfo.flags = 0;
+		svDescriptorCreateInfo.bindingCount = 1;
+		svDescriptorCreateInfo.pBindings = &svDescriptorLayoutBinding;
+		svDescriptorCreateInfo.pNext = nullptr;
+		VkResult r = vkCreateDescriptorSetLayout(device, &svDescriptorCreateInfo,
+			nullptr, &svDescriptorLayout);
+
+		// Descriptor Pool
+		VkDescriptorPoolCreateInfo svDescriptorpool_create_info = {};
+		svDescriptorpool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		VkDescriptorPoolSize descriptorpool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames };
+		/*VkDescriptorPoolSize descriptorpool_size[2] = {
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, matrixBuffer.size() }, //instance uniform
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }			//material storage
+																		//texture storage
+		};*/
+		svDescriptorpool_create_info.poolSizeCount = 1;
+		svDescriptorpool_create_info.pPoolSizes = &descriptorpool_size;
+		svDescriptorpool_create_info.maxSets = max_frames;
+		svDescriptorpool_create_info.flags = 0;
+		svDescriptorpool_create_info.pNext = nullptr;
+		vkCreateDescriptorPool(device, &svDescriptorpool_create_info, nullptr, &descriptorPool);
+
+		// Instance Uniform Buffer descriptor set
+		VkDescriptorSetAllocateInfo svDescriptorset_allocate_info = {};
+		svDescriptorset_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		svDescriptorset_allocate_info.descriptorSetCount = 1;
+		svDescriptorset_allocate_info.pSetLayouts = &svDescriptorLayout;
+		svDescriptorset_allocate_info.descriptorPool = descriptorPool;
+		svDescriptorset_allocate_info.pNext = nullptr;
+		svDescriptorSet.resize(max_frames);
+		for (int i = 0; i < max_frames; ++i)
+		{
+			vkAllocateDescriptorSets(device, &svDescriptorset_allocate_info, &svDescriptorSet[i]);
+		}
+
+		VkWriteDescriptorSet svWrite_descriptorset = {};
+		svWrite_descriptorset.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		svWrite_descriptorset.descriptorCount = 1;
+		svWrite_descriptorset.dstArrayElement = 0;
+		svWrite_descriptorset.dstBinding = 0;
+		svWrite_descriptorset.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		for (int i = 0; i < max_frames; ++i) {
+			svWrite_descriptorset.dstSet = svDescriptorSet[i];
+			VkDescriptorBufferInfo dbinfo = { svHandle[i], 0, VK_WHOLE_SIZE };
+			svWrite_descriptorset.pBufferInfo = &dbinfo;
+			vkUpdateDescriptorSets(device, 1, &svWrite_descriptorset, 0, nullptr);
+		}
+
+		//// Push constant
+		//VkPushConstantRange push_constant;
+		//push_constant.offset = 0;
+		//push_constant.size = sizeof(ShaderVars);
+		//push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 		// Descriptor pipeline layout
 		VkPipelineLayoutCreateInfo pipeline_layout_create_info = {};
 		pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipeline_layout_create_info.setLayoutCount = 0;
-		pipeline_layout_create_info.pSetLayouts = VK_NULL_HANDLE;
-		pipeline_layout_create_info.pushConstantRangeCount = 1; 
-		pipeline_layout_create_info.pPushConstantRanges = &push_constant;
+		pipeline_layout_create_info.setLayoutCount = 1;
+		/*VkDescriptorSetLayout layouts[2] = { vertexDescriptorLayout, pixelDescriptorLayout };
+		pipeline_layout_create_info.pSetLayouts = layouts;*/
+		pipeline_layout_create_info.pSetLayouts = &svDescriptorLayout;
+		pipeline_layout_create_info.pushConstantRangeCount = 0;
+		pipeline_layout_create_info.pPushConstantRanges = nullptr;
 		vkCreatePipelineLayout(device, &pipeline_layout_create_info,
 			nullptr, &pipelineLayout);
 		
@@ -457,18 +501,27 @@ public:
 		vlk.GetAspectRatio(aspect);
 		matrixProxy.ProjectionVulkanLHF(65.0f * TO_RADIANS, aspect, 0.1f, 100.0f, projection);
 
-		// Set shader vars
-		ShaderVars sv;
-		matrixProxy.MultiplyMatrixF(view, projection, sv.viewProjection);
+		//// Set shader vars
+		//ShaderVars sv;
+		//matrixProxy.MultiplyMatrixF(view, projection, sv.viewProjection);
+		matrixProxy.MultiplyMatrixF(view, projection, shaderVars.viewProjection);
 		
 		// Draw
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, indexHandle, offsets[0], VK_INDEX_TYPE_UINT32);
 		for (size_t i = 0; i < lvlData.uniqueMeshes.size(); i++)
-		{
-			sv.world = lvlData.uniqueMeshes[i].matrices[0];
-			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShaderVars), &sv);
+		{	
+			for (size_t j = 0; j < lvlData.uniqueMeshes[j].matrices.size(); j++)
+			{
+				shaderVars.matrices[j] = lvlData.uniqueMeshes[i].matrices[j];
+			}
+			//shaderVars.matrices[0] = lvlData.uniqueMeshes[i].matrices[0];
+			//shaderVars.world = lvlData.uniqueMeshes[i].matrices[0];
+			GvkHelper::write_to_buffer(device, svData[currentBuffer], &shaderVars, sizeof(ShaderVariables));
+			
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				pipelineLayout, 0, 1, &svDescriptorSet[currentBuffer], 0, nullptr);
 
 			vkCmdDrawIndexed(commandBuffer, lvlData.uniqueMeshes[i].indexCount, 
 				lvlData.uniqueMeshes[i].instanceCount, lvlData.uniqueMeshes[i].firstIndex, 
@@ -637,6 +690,17 @@ private:
 
 		vkDestroyShaderModule(device, vertexShader, nullptr);
 		vkDestroyShaderModule(device, pixelShader, nullptr);
+
+		for (size_t i = 0; i < max_frames; i++)
+		{
+			vkDestroyBuffer(device, svHandle[i], nullptr);
+			vkFreeMemory(device, svData[i], nullptr);
+		}
+		svHandle.clear();
+		svData.clear();
+
+		vkDestroyDescriptorSetLayout(device, svDescriptorLayout, nullptr);
+		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyPipeline(device, pipeline, nullptr);

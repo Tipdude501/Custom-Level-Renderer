@@ -1,30 +1,26 @@
 #pragma pack_matrix(row_major)
+//#define MAX_INSTANCE_PER_DRAW 1024
+//[[vk::binding(0, 0)]]
+//cbuffer INSTANCE_SHADER_DATA
+//{
+//    int materialIndex;
+//    int textureIndex;
+//    int padding[14];
+//    matrix viewProjection;
+//    matrix matrices[MAX_INSTANCE_PER_DRAW];
+//};
+
 #define MAX_INSTANCE_PER_DRAW 1024
-struct MATERIAL
-{
-    float3 Kd; // diffuse reflectivity
-    float d; // dissolve (transparency)
-    float3 Ks; // specular reflectivity
-    float Ns; // specular exponent
-    float3 Ka; // ambient reflectivity
-    float sharpness; // local reflection map sharpness
-    float3 Tf; // transmission filter
-    float Ni; // optical density (index of refraction)
-    float3 Ke; // emissive reflectivity
-    int illum; // illumination model
-};
 struct SHADER_VARIABLES
 {
-    float4 lightDirection;
-    float4 lightColor;
-    float4 ambientTerm;
-    float4 cameraPosition;
-    float4x4 viewMatrix;
-    float4x4 projectionMatrix;
-    float4x4 worldMatrix[MAX_INSTANCE_PER_DRAW];
-    MATERIAL materials[MAX_INSTANCE_PER_DRAW];
+    int materialIndex;
+    int textureIndex;
+    int padding[14];
+    matrix viewProjection;
+    matrix world;
+    matrix matrices[MAX_INSTANCE_PER_DRAW];
 };
-//StructuredBuffer<SHADER_VARIABLES> SceneData;
+StructuredBuffer<SHADER_VARIABLES> sv;
 
 struct VERTEX_IN
 {

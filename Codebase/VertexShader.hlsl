@@ -1,22 +1,40 @@
 #pragma pack_matrix(row_major)
-#define MAX_INSTANCE_PER_DRAW 1024
-cbuffer INSTANCE_UNIFORMS
-{
-    matrix instance_transforms[MAX_INSTANCE_PER_DRAW];
-};
+//#define MAX_INSTANCE_PER_DRAW 1024           // uniform version
+//[[vk::binding(0, 0)]]
+//cbuffer INSTANCE_SHADER_DATA
+//{
+//    int materialIndex;
+//    int textureIndex;
+//    int padding[14];
+//    matrix viewProjection;
+//    matrix matrices[MAX_INSTANCE_PER_DRAW];
+//};
 
-[[vk::push_constant]]
-cbuffer SHADER_VARS
+//[[vk::push_constant]] 
+//cbuffer SHADER_VARS
+//{
+//    float4x4 world;
+//    float4x4 viewProjection;
+//};
+
+#define MAX_INSTANCE_PER_DRAW 1024
+struct SHADER_VARIABLES
 {
-    float4x4 world;
-    float4x4 viewProjection;
+    int materialIndex;
+    int textureIndex;
+    int padding[14];
+    matrix viewProjection;
+    matrix world;
+    matrix matrices[MAX_INSTANCE_PER_DRAW];
 };
+StructuredBuffer<SHADER_VARIABLES> sv;
 
 struct VERTEX_IN
 {
     float3 pos : POSITION;
     float3 uvw;
     float3 nrm : NORMAL;
+    //int instanceId : SV_InstanceID;
 };
 
 struct VERTEX_OUT
@@ -27,16 +45,19 @@ struct VERTEX_OUT
     float2 uv : TEXCOORD;
 };
 
-VERTEX_OUT main(VERTEX_IN inputVertex) : SV_POSITION
+//int instanceId : SV_InstanceID;
+
+VERTEX_OUT main(VERTEX_IN input, int instanceId : SV_InstanceID) : SV_POSITION
 {
     VERTEX_OUT result;
     
-    result.posH = float4(inputVertex.pos, 1);
-    result.posW = mul(result.posH, world);
-    result.posH = mul(float4(result.posW, 1), viewProjection);
+    result.posH = float4(input.pos, 1);
+    result.posW = mul(result.posH, sv[0].matrices[instanceId]);
+    result.posH = mul(float4(result.posW, 1), sv[0].viewProjection); 
     
-    result.nrmW = mul(float4(inputVertex.nrm, 0), world);
-    result.uv = float2(inputVertex.uvw[0], inputVertex.uvw[1]);
+    
+    result.nrmW = mul(float4(input.nrm, 0), sv[0].matrices[instanceId]);
+    result.uv = float2(input.uvw[0], input.uvw[1]);
     
 	return result;
 }
