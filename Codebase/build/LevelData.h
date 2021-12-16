@@ -11,15 +11,24 @@ public:
 		unsigned int instanceCount = 1;
 		unsigned int firstIndex;
 		unsigned int vertexOffset;
-		unsigned int materialIndex;
-		std::vector<GW::MATH::GMATRIXF> matrices;
+		unsigned int transformOffset;			//goes to push constant
+		unsigned int materialIndex;				//goes to push constant
+		//std::vector<GW::MATH::GMATRIXF> matrices; //index for offsets
 	};
 
 	// Members
-	std::vector<UniqueMesh> uniqueMeshes;
-	std::vector<H2B::VERTEX> vertices;
-	std::vector<unsigned int> indices;
-	std::vector<H2B::MATERIAL> materials;
+	std::vector<UniqueMesh> uniqueMeshes;		
+	std::vector<H2B::VERTEX> vertices;				//goes to vertex buffer
+	std::vector<unsigned int> indices;				//goes to index buffer
+	std::vector<GW::MATH::GMATRIXF> transforms;		//goes to storage buffer
+	std::vector<H2B::MATERIAL> materials;			//goes to storage buffer
+
+	//unbound texture array
+	//descriptor for each texture
+	//swap between draws
+
+	//layout with diffuse, normal, and specular
+	//swap out descriptor sets
 
 	// Returns a pointer to a unique mesh if it exists
 	UniqueMesh* GetMesh(const std::string& _meshName)
@@ -42,19 +51,28 @@ public:
 		// will cause bugs if there are more than 1024 duplicates of an
 		// object in a scene.
 		//
+
+		// ALSO NOTE:
+		// The way this is currently set up if you don't add instances 
+		// in order, with duplicates next to each other, then it may
+		// cause the transformOffset of some uniqueMeshes to no longer 
+		// be valid.
+		//
 		
 		UniqueMesh* instance = GetMesh(_meshName);
 		if (instance)
 		{
+			auto iter = transforms.begin() + instance->transformOffset + instance->instanceCount;
+			transforms.insert(iter, _matrix);
 			instance->instanceCount++;
-			instance->matrices.push_back(_matrix);
 		}
 		else
 		{
 			UniqueMesh newInstance;
 			newInstance.name = _meshName;
 			newInstance.instanceCount = 1;
-			newInstance.matrices.push_back(_matrix);
+			newInstance.transformOffset = transforms.size();
+			transforms.push_back(_matrix);
 			uniqueMeshes.push_back(newInstance);
 		}
 	}
