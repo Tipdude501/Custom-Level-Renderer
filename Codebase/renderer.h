@@ -52,22 +52,27 @@ class Renderer
 	GW::MATH::GMATRIXF projection;
 
 	// Shader data
-	std::vector<VkBuffer> transformsHandle;
-	std::vector<VkBuffer> materialsHandle;
+	std::vector<VkBuffer> transformsBuffer;
+	std::vector<VkBuffer> materialsBuffer;
+	std::vector<VkBuffer> sceneDataBuffer;
 	std::vector<VkDeviceMemory> transformsData;
 	std::vector<VkDeviceMemory> materialsData;
+	std::vector<VkDeviceMemory> sceneDataData;
 	std::vector<VkDescriptorSet> storageBuffersDescriptorSet;
 	VkDescriptorSetLayout storageBuffersDescriptorSetLayout = nullptr;
 	VkDescriptorPool descriptorPool = nullptr;
 	unsigned int max_frames = 0;
-	struct InstanceData {
+	struct SceneData {
 		GW::MATH::GMATRIXF viewProjection;
+		GW::MATH::GVECTORF lightDirection;
+		GW::MATH::GVECTORF lightColor;
+		GW::MATH::GVECTORF ambientTerm;
+		GW::MATH::GVECTORF cameraPosition;
+	};
+	SceneData sceneData;
+	struct InstanceData {
 		unsigned int transformOffset;
 		unsigned int materialIndex;
-		//GW::MATH::GVECTORF lightDirection;
-		//GW::MATH::GVECTORF lightColor;
-		//GW::MATH::GVECTORF ambientTerm;
-		//GW::MATH::GVECTORF cameraPosition;
 	};
 	InstanceData instanceData;
 
@@ -98,7 +103,7 @@ public:
 		vectorProxy.Create();
 
 		// Init camera and view
-		GW::MATH::GVECTORF eye = { 0.5f, 0.5f, -0.5f };
+		GW::MATH::GVECTORF eye = { 5.0f, 0.5f, 0.0f };
 		GW::MATH::GVECTORF at = { 0.0f, 0.0f, 0.0f };
 		GW::MATH::GVECTORF up = { 0.0f, 1.0f, 0.0f };
 		matrixProxy.LookAtLHF(eye, at, up, view);
@@ -206,27 +211,32 @@ public:
 
 		// Get number of frames for descriptor sets
 		vlk.GetSwapchainImageCount(max_frames);
-		transformsHandle.resize(max_frames);
+		transformsBuffer.resize(max_frames);
+		materialsBuffer.resize(max_frames);
+		sceneDataBuffer.resize(max_frames);
 		transformsData.resize(max_frames);
-		materialsHandle.resize(max_frames);
 		materialsData.resize(max_frames);
-		
-		// Transfer transforms to storage buffer
+		sceneDataData.resize(max_frames);
+
 		for (size_t i = 0; i < max_frames; i++)
 		{
+			// Transfer transforms to storage buffer
 			GvkHelper::create_buffer(physicalDevice, device, sizeof(GW::MATH::GMATRIXF) * lvlData.transforms.size(),
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &transformsHandle[i], &transformsData[i]);
+				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &transformsBuffer[i], &transformsData[i]);
 			GvkHelper::write_to_buffer(device, transformsData[i], lvlData.transforms.data(), sizeof(GW::MATH::GMATRIXF) * lvlData.transforms.size());
-		}
-
-		// Transfer materials to storage buffer
-		for (size_t i = 0; i < max_frames; i++)
-		{
-			GvkHelper::create_buffer(physicalDevice, device, sizeof(H2B::ATTRIBUTES) * lvlData.materials.size(),
+			
+			// Transfer materials to storage buffer
+			GvkHelper::create_buffer(physicalDevice, device, sizeof(H2B::ATTRIBUTES)* lvlData.materials.size(),
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &materialsHandle[i], &materialsData[i]);
+				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &materialsBuffer[i], &materialsData[i]);
 			GvkHelper::write_to_buffer(device, materialsData[i], lvlData.materials.data(), sizeof(H2B::ATTRIBUTES)* lvlData.materials.size());
+
+			// Transfer scene data to storage buffer
+			GvkHelper::create_buffer(physicalDevice, device, sizeof(SceneData),
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &sceneDataBuffer[i], &sceneDataData[i]);
+			GvkHelper::write_to_buffer(device, sceneDataData[i], &sceneData, sizeof(SceneData));
 		}
 
 		/***************** SHADER INTIALIZATION ******************/
@@ -385,7 +395,7 @@ public:
 		//layout = carton	/ set = egg
 
 		// Layout bindings: describes the kinds of descriptors in the set
-		VkDescriptorSetLayoutBinding descriptorLayoutBindings[2];
+		VkDescriptorSetLayoutBinding descriptorLayoutBindings[3];
 		//binding 0 = tranforms storage buffer
 		descriptorLayoutBindings[0].binding = 0; //"which binding am I"
 		descriptorLayoutBindings[0].descriptorCount = 1;
@@ -398,30 +408,35 @@ public:
 		descriptorLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		descriptorLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 		descriptorLayoutBindings[1].pImmutableSamplers = nullptr;
+		//binding 2 = scene data storage buffer
+		descriptorLayoutBindings[2].binding = 2; //"which binding am I"
+		descriptorLayoutBindings[2].descriptorCount = 1;
+		descriptorLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descriptorLayoutBindings[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+		descriptorLayoutBindings[2].pImmutableSamplers = nullptr;
 
 		// Create layout: describes the kind of DescriptorSet coming to the pipeline
-		VkDescriptorSetLayoutCreateInfo svDescriptorCreateInfo = {};
-		svDescriptorCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		svDescriptorCreateInfo.flags = 0;
-		svDescriptorCreateInfo.bindingCount = 2;
-		svDescriptorCreateInfo.pBindings = descriptorLayoutBindings;
-		svDescriptorCreateInfo.pNext = nullptr;
-		VkResult r = vkCreateDescriptorSetLayout(device, &svDescriptorCreateInfo,
+		VkDescriptorSetLayoutCreateInfo descriptorCreateInfo = {};
+		descriptorCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		descriptorCreateInfo.flags = 0;
+		descriptorCreateInfo.bindingCount = 3;
+		descriptorCreateInfo.pBindings = descriptorLayoutBindings;
+		descriptorCreateInfo.pNext = nullptr;
+		VkResult r = vkCreateDescriptorSetLayout(device, &descriptorCreateInfo,
 			nullptr, &storageBuffersDescriptorSetLayout);
 
 		// Descriptor Pool: describes the space needed to hold all our descriptor sets
 		VkDescriptorPoolCreateInfo descriptorpool_create_info = {};
 		descriptorpool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		//VkDescriptorPoolSize descriptorpool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames }; //number of storage buffers * frames 
-		VkDescriptorPoolSize descriptorpool_size[2] = {
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames },	// transforms
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames }	// materials
+		VkDescriptorPoolSize descriptorpool_size[3] = {			// All the descriptors for all the sets
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames },	// transforms storage buffer
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames },	// materials storage buffer
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames }	// scene data storage buffer
 																
 		};
-		descriptorpool_create_info.poolSizeCount = 2;	
+		descriptorpool_create_info.poolSizeCount = 3;	
 		descriptorpool_create_info.pPoolSizes = descriptorpool_size;
-		//descriptorpool_create_info.maxSets = max_frames;			//max descriptors per frames
-		descriptorpool_create_info.maxSets = max_frames * 2;
+		descriptorpool_create_info.maxSets = max_frames * 3;
 		descriptorpool_create_info.flags = 0;
 		descriptorpool_create_info.pNext = nullptr;
 		vkCreateDescriptorPool(device, &descriptorpool_create_info, nullptr, &descriptorPool);
@@ -442,16 +457,17 @@ public:
 		// Write descriptor sets: use the pool to write buffer data
 		VkWriteDescriptorSet write_descriptorset = {};
 		write_descriptorset.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		write_descriptorset.descriptorCount = 2;
+		write_descriptorset.descriptorCount = 3;
 		write_descriptorset.dstArrayElement = 0;
 		write_descriptorset.dstBinding = 0;
 		write_descriptorset.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		for (int i = 0; i < max_frames; ++i) {
 			write_descriptorset.dstSet = storageBuffersDescriptorSet[i];
 
-			VkDescriptorBufferInfo dbinfo[2] = { 
-				{transformsHandle[i], 0, VK_WHOLE_SIZE},
-				{materialsHandle[i], 0, VK_WHOLE_SIZE}};
+			VkDescriptorBufferInfo dbinfo[3] = { 
+				{transformsBuffer[i], 0, VK_WHOLE_SIZE},
+				{materialsBuffer[i], 0, VK_WHOLE_SIZE},
+				{sceneDataBuffer[i], 0, VK_WHOLE_SIZE}};
 			write_descriptorset.pBufferInfo = dbinfo;
 
 			vkUpdateDescriptorSets(device, 1, &write_descriptorset, 0, nullptr);
@@ -529,10 +545,14 @@ public:
 		vlk.GetAspectRatio(aspect);
 		matrixProxy.ProjectionVulkanLHF(65.0f * TO_RADIANS, aspect, 0.1f, 100.0f, projection);
 
-		//// Set shader vars
-		//ShaderVars sv;
-		//matrixProxy.MultiplyMatrixF(view, projection, sv.viewProjection);
-		matrixProxy.MultiplyMatrixF(view, projection, instanceData.viewProjection);
+		// Set scene data
+		matrixProxy.MultiplyMatrixF(view, projection, sceneData.viewProjection);
+		sceneData.ambientTerm = { 0.35f, 0.35f, 0.45f };
+		sceneData.lightDirection = { -1.0f, -1.0f, -2.0f };
+		sceneData.lightColor = { 0.9f, 0.9f, 1.0f, 1.0f };
+		sceneData.cameraPosition = camera.row4;
+		GvkHelper::write_to_buffer(device, sceneDataData[currentBuffer],
+			&sceneData, sizeof(SceneData));
 
 		// Draw
 		VkDeviceSize offsets[] = { 0 };
@@ -543,6 +563,7 @@ public:
 		for (size_t i = 0; i < lvlData.uniqueMeshes.size(); i++)
 		{	
 			instanceData.transformOffset = lvlData.uniqueMeshes[i].transformOffset;
+			instanceData.materialIndex = lvlData.uniqueMeshes[i].materialIndex;
 			vkCmdPushConstants(commandBuffer, pipelineLayout,
 				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(InstanceData), &instanceData);
 
@@ -731,29 +752,36 @@ private:
 	{
 		vkDeviceWaitIdle(device);
 
+		// Clean up shaders
+		vkDestroyShaderModule(device, vertexShader, nullptr);
+		vkDestroyShaderModule(device, pixelShader, nullptr);
+		
+		// Clean up buffers
 		vkDestroyBuffer(device, vertexHandle, nullptr);
 		vkFreeMemory(device, vertexData, nullptr);
 		vkDestroyBuffer(device, indexHandle, nullptr);
 		vkFreeMemory(device, indexData, nullptr);
-
-		vkDestroyShaderModule(device, vertexShader, nullptr);
-		vkDestroyShaderModule(device, pixelShader, nullptr);
-		
 		for (size_t i = 0; i < max_frames; i++)
 		{
-			vkDestroyBuffer(device, transformsHandle[i], nullptr);
-			vkDestroyBuffer(device, materialsHandle[i], nullptr);
+			vkDestroyBuffer(device, transformsBuffer[i], nullptr);
+			vkDestroyBuffer(device, materialsBuffer[i], nullptr);
+			vkDestroyBuffer(device, sceneDataBuffer[i], nullptr);
 			vkFreeMemory(device, transformsData[i], nullptr);
 			vkFreeMemory(device, materialsData[i], nullptr);
+			vkFreeMemory(device, sceneDataData[i], nullptr);
 		}
-		transformsHandle.clear();
-		materialsHandle.clear();
+		transformsBuffer.clear();
+		materialsBuffer.clear();
+		sceneDataBuffer.clear();
 		transformsData.clear();
 		materialsData.clear();
+		sceneDataData.clear();
 
+		// Clean up layouts and pools
 		vkDestroyDescriptorSetLayout(device, storageBuffersDescriptorSetLayout, nullptr);
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
+		// Clean up pipeline
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyPipeline(device, pipeline, nullptr);
 	}
