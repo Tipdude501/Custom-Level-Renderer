@@ -56,9 +56,8 @@ class Renderer
 	std::vector<VkBuffer> materialsHandle;
 	std::vector<VkDeviceMemory> transformsData;
 	std::vector<VkDeviceMemory> materialsData;
-	std::vector<VkDescriptorSet> transformsDescriptorSet;
-	std::vector<VkDescriptorSet> materialsDescriptorSet;
-	VkDescriptorSetLayout storageBuffersDescriptorLayout = nullptr;
+	std::vector<VkDescriptorSet> storageBuffersDescriptorSet;
+	VkDescriptorSetLayout storageBuffersDescriptorSetLayout = nullptr;
 	VkDescriptorPool descriptorPool = nullptr;
 	unsigned int max_frames = 0;
 	struct InstanceData {
@@ -148,7 +147,7 @@ public:
 					
 					//push back material per submesh
 					int matIndex = parser.meshes[submeshIndex].materialIndex;
-					lvlData.materials.push_back(parser.materials[matIndex]);
+					lvlData.materials.push_back(parser.materials[matIndex].attrib);
 				}
 
 				//then write the first submesh data to the original unique mesh spot
@@ -166,7 +165,7 @@ public:
 				
 				//push back material per submesh
 				int matIndex = parser.meshes[0].materialIndex;
-				lvlData.materials.push_back(parser.materials[matIndex]);
+				lvlData.materials.push_back(parser.materials[matIndex].attrib);
 
 				// Push back all vertices
 				for (size_t j = 0; j < parser.vertexCount; j++)
@@ -182,7 +181,7 @@ public:
 					lvlData.vertices.push_back(parser.vertices[i]);
 				for (size_t i = 0; i < parser.indexCount; i++)
 					lvlData.indices.push_back(parser.indices[i]);
-				lvlData.materials.push_back(parser.materials[0]);
+				lvlData.materials.push_back(parser.materials[0].attrib);
 			}
 		}
 
@@ -209,6 +208,8 @@ public:
 		vlk.GetSwapchainImageCount(max_frames);
 		transformsHandle.resize(max_frames);
 		transformsData.resize(max_frames);
+		materialsHandle.resize(max_frames);
+		materialsData.resize(max_frames);
 		
 		// Transfer transforms to storage buffer
 		for (size_t i = 0; i < max_frames; i++)
@@ -220,13 +221,13 @@ public:
 		}
 
 		// Transfer materials to storage buffer
-		//for (size_t i = 0; i < max_frames; i++)
-		//{
-		//	GvkHelper::create_buffer(physicalDevice, device, sizeof(H2B::MATERIAL) * lvlData.materials.size(),
-		//		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		//		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &transformsHandle[i], &transformsData[i]);
-		//	GvkHelper::write_to_buffer(device, materialsData[i], lvlData.materials.data(), sizeof(H2B::MATERIAL)* lvlData.materials.size());
-		//}
+		for (size_t i = 0; i < max_frames; i++)
+		{
+			GvkHelper::create_buffer(physicalDevice, device, sizeof(H2B::ATTRIBUTES) * lvlData.materials.size(),
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &materialsHandle[i], &materialsData[i]);
+			GvkHelper::write_to_buffer(device, materialsData[i], lvlData.materials.data(), sizeof(H2B::ATTRIBUTES)* lvlData.materials.size());
+		}
 
 		/***************** SHADER INTIALIZATION ******************/
 		// Intialize runtime shader compiler HLSL -> SPIRV
@@ -383,125 +384,78 @@ public:
 
 		//layout = carton	/ set = egg
 
-		// Layout bindings
-		VkDescriptorSetLayoutBinding descriptorLayoutBindings = {};// [2] ;
-		descriptorLayoutBindings.binding = 0; //"which binding am I"
-		descriptorLayoutBindings.descriptorCount = 1;
-		descriptorLayoutBindings.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		descriptorLayoutBindings.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-		descriptorLayoutBindings.pImmutableSamplers = nullptr;
-		////binding 0 = tranforms storage buffer
-		//descriptorLayoutBindings[0].binding = 0; //"which binding am I"
-		//descriptorLayoutBindings[0].descriptorCount = 1;
-		//descriptorLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		//descriptorLayoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-		//descriptorLayoutBindings[0].pImmutableSamplers = nullptr;
-		////binding 1 = materials storage buffer
-		//descriptorLayoutBindings[1].binding = 1; //"which binding am I"
-		//descriptorLayoutBindings[1].descriptorCount = 1;
-		//descriptorLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		//descriptorLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-		//descriptorLayoutBindings[1].pImmutableSamplers = nullptr;
+		// Layout bindings: describes the kinds of descriptors in the set
+		VkDescriptorSetLayoutBinding descriptorLayoutBindings[2];
+		//binding 0 = tranforms storage buffer
+		descriptorLayoutBindings[0].binding = 0; //"which binding am I"
+		descriptorLayoutBindings[0].descriptorCount = 1;
+		descriptorLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descriptorLayoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+		descriptorLayoutBindings[0].pImmutableSamplers = nullptr;
+		//binding 1 = materials storage buffer
+		descriptorLayoutBindings[1].binding = 1; //"which binding am I"
+		descriptorLayoutBindings[1].descriptorCount = 1;
+		descriptorLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descriptorLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+		descriptorLayoutBindings[1].pImmutableSamplers = nullptr;
 
-		// Create layout
+		// Create layout: describes the kind of DescriptorSet coming to the pipeline
 		VkDescriptorSetLayoutCreateInfo svDescriptorCreateInfo = {};
 		svDescriptorCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		svDescriptorCreateInfo.flags = 0;
-		svDescriptorCreateInfo.bindingCount = 1;
-		svDescriptorCreateInfo.pBindings = &descriptorLayoutBindings;
+		svDescriptorCreateInfo.bindingCount = 2;
+		svDescriptorCreateInfo.pBindings = descriptorLayoutBindings;
 		svDescriptorCreateInfo.pNext = nullptr;
 		VkResult r = vkCreateDescriptorSetLayout(device, &svDescriptorCreateInfo,
-			nullptr, &storageBuffersDescriptorLayout);
+			nullptr, &storageBuffersDescriptorSetLayout);
 
-		// Descriptor Pool
+		// Descriptor Pool: describes the space needed to hold all our descriptor sets
 		VkDescriptorPoolCreateInfo descriptorpool_create_info = {};
 		descriptorpool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		VkDescriptorPoolSize descriptorpool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames }; //number of storage buffers * frames 
-		//enough descriptors for all descriptors being used in scene
-
-		/*VkDescriptorPoolSize descriptorpool_size[2] = {
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, matrixBuffer.size() }, //instance uniform
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }			//material storage
-																		//texture storage
-		};*/
-		descriptorpool_create_info.poolSizeCount = 1;	
-		descriptorpool_create_info.pPoolSizes = &descriptorpool_size;
-		descriptorpool_create_info.maxSets = max_frames;			//max descriptors per frames
+		//VkDescriptorPoolSize descriptorpool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames }; //number of storage buffers * frames 
+		VkDescriptorPoolSize descriptorpool_size[2] = {
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames },	// transforms
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, max_frames }	// materials
+																
+		};
+		descriptorpool_create_info.poolSizeCount = 2;	
+		descriptorpool_create_info.pPoolSizes = descriptorpool_size;
+		//descriptorpool_create_info.maxSets = max_frames;			//max descriptors per frames
+		descriptorpool_create_info.maxSets = max_frames * 2;
 		descriptorpool_create_info.flags = 0;
 		descriptorpool_create_info.pNext = nullptr;
 		vkCreateDescriptorPool(device, &descriptorpool_create_info, nullptr, &descriptorPool);
 
-		// Allocate descriptor sets
+		// Allocate descriptor sets: using the descriptor pool, allocate the descriptor sets
 		VkDescriptorSetAllocateInfo svDescriptorset_allocate_info = {};
 		svDescriptorset_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		svDescriptorset_allocate_info.descriptorSetCount = 1;
-		svDescriptorset_allocate_info.pSetLayouts = &storageBuffersDescriptorLayout;			//this will include multiple layouts later
+		svDescriptorset_allocate_info.pSetLayouts = &storageBuffersDescriptorSetLayout;			//this will include multiple layouts later
 		svDescriptorset_allocate_info.descriptorPool = descriptorPool;
 		svDescriptorset_allocate_info.pNext = nullptr;
-		transformsDescriptorSet.resize(max_frames);
+		storageBuffersDescriptorSet.resize(max_frames);
 		for (int i = 0; i < max_frames; ++i)
 		{
-			vkAllocateDescriptorSets(device, &svDescriptorset_allocate_info, &transformsDescriptorSet[i]);
+			vkAllocateDescriptorSets(device, &svDescriptorset_allocate_info, &storageBuffersDescriptorSet[i]);	//can include more descriptor sets as you see
 		}
-		//VkDescriptorSetAllocateInfo svDescriptorset_allocate_info = {};
-		//svDescriptorset_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		//svDescriptorset_allocate_info.descriptorSetCount = 2;
-		//svDescriptorset_allocate_info.pSetLayouts = &storageBuffersDescriptorLayout;			//this will include multiple layouts later
-		//svDescriptorset_allocate_info.descriptorPool = descriptorPool;
-		//svDescriptorset_allocate_info.pNext = nullptr;
-		//transformsDescriptorSet.resize(max_frames);
-		//materialsDescriptorSet.resize(max_frames);
-		//for (int i = 0; i < max_frames; ++i)
-		//{
-		//	vkAllocateDescriptorSets(device, &svDescriptorset_allocate_info, &transformsDescriptorSet[i]);
-		//	vkAllocateDescriptorSets(device, &svDescriptorset_allocate_info, &materialsDescriptorSet[i]);
-		//}
-		//then separately allocate all the textures as well
 
-		// Write descriptor sets
-		VkWriteDescriptorSet svWrite_descriptorset = {};
-		svWrite_descriptorset.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		svWrite_descriptorset.descriptorCount = 1;
-		svWrite_descriptorset.dstArrayElement = 0;
-		svWrite_descriptorset.dstBinding = 0;
-		svWrite_descriptorset.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		//write them
+		// Write descriptor sets: use the pool to write buffer data
+		VkWriteDescriptorSet write_descriptorset = {};
+		write_descriptorset.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		write_descriptorset.descriptorCount = 2;
+		write_descriptorset.dstArrayElement = 0;
+		write_descriptorset.dstBinding = 0;
+		write_descriptorset.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		for (int i = 0; i < max_frames; ++i) {
-			svWrite_descriptorset.dstSet = transformsDescriptorSet[i];
+			write_descriptorset.dstSet = storageBuffersDescriptorSet[i];
 
-			VkDescriptorBufferInfo dbinfo = { transformsHandle[i], 0, VK_WHOLE_SIZE };
-			svWrite_descriptorset.pBufferInfo = &dbinfo;
+			VkDescriptorBufferInfo dbinfo[2] = { 
+				{transformsHandle[i], 0, VK_WHOLE_SIZE},
+				{materialsHandle[i], 0, VK_WHOLE_SIZE}};
+			write_descriptorset.pBufferInfo = dbinfo;
 
-			vkUpdateDescriptorSets(device, 1, &svWrite_descriptorset, 0, nullptr);
-		}
-		//VkWriteDescriptorSet svWrite_descriptorset[2];
-		////transforms descriptor set
-		//svWrite_descriptorset[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//svWrite_descriptorset[0].descriptorCount = 2;
-		//svWrite_descriptorset[0].dstArrayElement = 0;
-		//svWrite_descriptorset[0].dstBinding = 0;
-		//svWrite_descriptorset[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		////materials descriptor set
-		//svWrite_descriptorset[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//svWrite_descriptorset[1].descriptorCount = 2;
-		//svWrite_descriptorset[1].dstArrayElement = 0;
-		//svWrite_descriptorset[1].dstBinding = 1;
-		//svWrite_descriptorset[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		////write them
-		//for (int i = 0; i < max_frames; ++i) {
-		//	svWrite_descriptorset[0].dstSet = transformsDescriptorSet[i];
-		//	svWrite_descriptorset[1].dstSet = materialsDescriptorSet[i];
-
-		//	VkDescriptorBufferInfo dbinfo[2] = {
-		//		{ transformsHandle[i], 0, VK_WHOLE_SIZE },
-		//		{ materialsHandle[i], 0, VK_WHOLE_SIZE }
-		//	};
-		//	svWrite_descriptorset[0].pBufferInfo = &dbinfo[0];
-		//	svWrite_descriptorset[1].pBufferInfo = &dbinfo[1];
-
-		//	vkUpdateDescriptorSets(device, 2, svWrite_descriptorset, 0, nullptr);
-		//}
-
+			vkUpdateDescriptorSets(device, 1, &write_descriptorset, 0, nullptr);
+		};
 
 
 		// Scene Push constant
@@ -516,7 +470,7 @@ public:
 		pipeline_layout_create_info.setLayoutCount = 1;
 		/*VkDescriptorSetLayout layouts[2] = { vertexDescriptorLayout, pixelDescriptorLayout };
 		pipeline_layout_create_info.pSetLayouts = layouts;*/
-		pipeline_layout_create_info.pSetLayouts = &storageBuffersDescriptorLayout;
+		pipeline_layout_create_info.pSetLayouts = &storageBuffersDescriptorSetLayout;
 		pipeline_layout_create_info.pushConstantRangeCount = 1;
 		pipeline_layout_create_info.pPushConstantRanges = &pushConstantRange;
 		vkCreatePipelineLayout(device, &pipeline_layout_create_info,
@@ -585,7 +539,7 @@ public:
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexHandle, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, indexHandle, offsets[0], VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			pipelineLayout, 0, 1, &transformsDescriptorSet[currentBuffer], 0, nullptr);
+			pipelineLayout, 0, 1, &storageBuffersDescriptorSet[currentBuffer], 0, nullptr);
 		for (size_t i = 0; i < lvlData.uniqueMeshes.size(); i++)
 		{	
 			instanceData.transformOffset = lvlData.uniqueMeshes[i].transformOffset;
@@ -784,16 +738,20 @@ private:
 
 		vkDestroyShaderModule(device, vertexShader, nullptr);
 		vkDestroyShaderModule(device, pixelShader, nullptr);
-
+		
 		for (size_t i = 0; i < max_frames; i++)
 		{
 			vkDestroyBuffer(device, transformsHandle[i], nullptr);
+			vkDestroyBuffer(device, materialsHandle[i], nullptr);
 			vkFreeMemory(device, transformsData[i], nullptr);
+			vkFreeMemory(device, materialsData[i], nullptr);
 		}
 		transformsHandle.clear();
+		materialsHandle.clear();
 		transformsData.clear();
+		materialsData.clear();
 
-		vkDestroyDescriptorSetLayout(device, storageBuffersDescriptorLayout, nullptr);
+		vkDestroyDescriptorSetLayout(device, storageBuffersDescriptorSetLayout, nullptr);
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);

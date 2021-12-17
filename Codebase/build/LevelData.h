@@ -21,7 +21,7 @@ public:
 	std::vector<H2B::VERTEX> vertices;				//goes to vertex buffer
 	std::vector<unsigned int> indices;				//goes to index buffer
 	std::vector<GW::MATH::GMATRIXF> transforms;		//goes to storage buffer
-	std::vector<H2B::MATERIAL> materials;			//goes to storage buffer
+	std::vector<H2B::ATTRIBUTES> materials;			//goes to storage buffer
 
 	//unbound texture array
 	//descriptor for each texture

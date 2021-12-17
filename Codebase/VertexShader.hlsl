@@ -12,7 +12,8 @@ struct MAT_ATTRIBUTES
     float3 Ke; // emissive reflectivity
     int illum; // illumination model
 };
-//StructuredBuffer<MAT_ATTRIBUTES> materials;   //indexing offsets by the size of the templated type
+[[vk::binding(1, 0)]]
+StructuredBuffer<MAT_ATTRIBUTES> materials; //indexing offsets by the size of the templated type
 
 [[vk::binding(0, 0)]]
 StructuredBuffer<matrix> transforms; //indexing offsets by the size of the templated type
