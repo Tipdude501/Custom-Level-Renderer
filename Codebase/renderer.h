@@ -6,8 +6,8 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include "build/LevelData.h"
-#include "build/h2bParser.h"
+#include "LevelData.h"
+#include "h2bParser.h"
 
 #define PI 3.14159265359f
 #define TO_RADIANS PI / 180.0f
@@ -15,8 +15,8 @@
 //Forward declarations
 std::string ShaderAsString(const char* shaderFilePath);
 
-// Shaders
-std::string vertexShaderPath = ShaderAsString("../VertexShader.hlsl");
+// Shaders	
+std::string vertexShaderPath = ShaderAsString("../VertexShader.hlsl"); //TODO: Convert this to use either precompiled shaders or strings in a .h file
 const char* vertexShaderSource = vertexShaderPath.c_str();
 std::string pixelShaderPath = ShaderAsString("../PixelShader.hlsl");
 const char* pixelShaderSource = pixelShaderPath.c_str();

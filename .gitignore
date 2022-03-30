@@ -1,13 +1,2 @@
 #Generated files
-Codebase/build/.vs/
-Codebase/build/x64/
-Codebase/build/LevelRenderer.dir/
-Codebase/build/CMakeFiles/
-Codebase/build/Debug/
-Codebase/build/CMakeCache.txt
-/External Project Files/*.blend1
-
-#Other
-UnusedAssets/
-/Project Rubric.xlsx
-/~$Project Rubric.xlsx
+Codebase/build

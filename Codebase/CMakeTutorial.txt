@@ -1,0 +1,4 @@
+A reminder on how to use cmake in case you don't touch this project for a while...
+
+Use the following console command in the current directory:
+cmake -S ./ -B ./build
