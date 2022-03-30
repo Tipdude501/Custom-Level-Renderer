@@ -6,20 +6,16 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include "shaders.h"
 #include "LevelData.h"
 #include "h2bParser.h"
 
 #define PI 3.14159265359f
 #define TO_RADIANS PI / 180.0f
 
-//Forward declarations
-std::string ShaderAsString(const char* shaderFilePath);
-
 // Shaders	
-std::string vertexShaderPath = ShaderAsString("../VertexShader.hlsl"); //TODO: Convert this to use either precompiled shaders or strings in a .h file
-const char* vertexShaderSource = vertexShaderPath.c_str();
-std::string pixelShaderPath = ShaderAsString("../PixelShader.hlsl");
-const char* pixelShaderSource = pixelShaderPath.c_str();
+const char* vertexShaderSource = Shaders::vertexShader;
+const char* pixelShaderSource = Shaders::pixelShader;
 
 
 // Creation, Rendering & Cleanup
@@ -786,16 +782,3 @@ private:
 		vkDestroyPipeline(device, pipeline, nullptr);
 	}
 };
-
-// Load a shader file as a string of characters.
-std::string ShaderAsString(const char* shaderFilePath) {
-	std::string output;
-	unsigned int stringLength = 0;
-	GW::SYSTEM::GFile file; file.Create();
-	file.GetFileSize(shaderFilePath, stringLength);
-	if (stringLength && +file.OpenBinaryRead(shaderFilePath)) {
-		output.resize(stringLength);
-		file.Read(&output[0], stringLength);
-	}
-	return output;
-}
